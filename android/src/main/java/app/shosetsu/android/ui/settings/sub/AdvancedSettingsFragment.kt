@@ -96,7 +96,7 @@ class AdvancedSettingsFragment : ShosetsuFragment() {
 			catch = {
 				logE("Failed to purge")
 				makeSnackBar(
-					R.string.controller_settings_advanced_snackbar_purge_failure,
+					R.string.fragment_settings_advanced_snackbar_purge_failure,
 					LENGTH_LONG
 				)
 					?.setAction(R.string.retry) { purgeNovelCache() }
@@ -104,7 +104,7 @@ class AdvancedSettingsFragment : ShosetsuFragment() {
 			}
 		) {
 
-			makeSnackBar(R.string.controller_settings_advanced_snackbar_purge_success)
+			makeSnackBar(R.string.fragment_settings_advanced_snackbar_purge_success)
 				?.show()
 		}
 	}
@@ -124,7 +124,7 @@ class AdvancedSettingsFragment : ShosetsuFragment() {
 		launchUI {
 			activity?.onBackPressedDispatcher?.onBackPressed()
 			makeSnackBar(
-				R.string.controller_settings_advanced_snackbar_ui_change,
+				R.string.fragment_settings_advanced_snackbar_ui_change,
 				Snackbar.LENGTH_INDEFINITE
 			)?.setAction(R.string.apply) {
 				launchIO {
