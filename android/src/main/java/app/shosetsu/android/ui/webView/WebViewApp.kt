@@ -3,6 +3,7 @@ package app.shosetsu.android.ui.webView
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -84,6 +85,14 @@ class WebViewApp : AppCompatActivity(), DIAware {
 		}
 	}
 
+	private fun clearCookies(url: String) {
+		val manager = CookieManager.getInstance()
+		val cookies = manager.getCookie(url) ?: return
+		cookies.split(";")
+			.map { it.substringBefore("=") }
+			.onEach { manager.setCookie(url, "$it=;Max-Age=-1") }
+	}
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
@@ -98,7 +107,8 @@ class WebViewApp : AppCompatActivity(), DIAware {
 				url,
 				finish = ::finish,
 				shareWebpage = ::shareWebpage,
-				openInBrowser = ::openInBrowser
+				openInBrowser = ::openInBrowser,
+				onClearCookies = ::clearCookies,
 			)
 		}
 	}
@@ -110,6 +120,7 @@ fun WebViewAppView(
 	finish: () -> Unit,
 	shareWebpage: (String) -> Unit,
 	openInBrowser: (String) -> Unit,
+	onClearCookies: (String) -> Unit,
 	viewModel: WebViewViewModel = viewModelDi(),
 ) {
 	ShosetsuCompose {
@@ -120,7 +131,8 @@ fun WebViewAppView(
 			url = url,
 			userAgent = userAgent,
 			onShare = shareWebpage,
-			onOpenInBrowser = openInBrowser
+			onOpenInBrowser = openInBrowser,
+			onClearCookies = onClearCookies,
 		)
 	}
 }
@@ -134,9 +146,11 @@ fun WebViewScreen(
 	userAgent: String,
 	onShare: (String) -> Unit,
 	onOpenInBrowser: (String) -> Unit,
+	onClearCookies: (String) -> Unit
 ) {
 	val state = rememberWebViewState(url = url)
 	val navigator = rememberWebViewNavigator()
+	var currentUrl by remember { mutableStateOf(url) }
 	Scaffold(
 		topBar = {
 			Box {
@@ -194,17 +208,24 @@ fun WebViewScreen(
 								}
 							)
 							DropdownMenuItem(onClick = {
-								onShare(state.lastLoadedUrl!!); overflow = false
+								onShare(currentUrl); overflow = false
 							},
 								text = {
 									Text(text = stringResource(R.string.share))
 								}
 							)
 							DropdownMenuItem(onClick = {
-								onOpenInBrowser(state.lastLoadedUrl!!); overflow = false
+								onOpenInBrowser(currentUrl); overflow = false
 							},
 								text = {
 									Text(text = stringResource(R.string.open_in_browser))
+								}
+							)
+							DropdownMenuItem(onClick = {
+								onClearCookies(currentUrl); overflow = false
+							},
+								text = {
+									Text(text = stringResource(R.string.action_webview_clear_cookies))
 								}
 							)
 						}
@@ -238,6 +259,23 @@ fun WebViewScreen(
 	) { contentPadding ->
 		val webClient = remember {
 			object : AccompanistWebViewClient() {
+				override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+					super.onPageStarted(view, url, favicon)
+					url?.let {
+						currentUrl = it
+					}
+				}
+
+				override fun doUpdateVisitedHistory(
+					view: WebView?,
+					url: String?,
+					isReload: Boolean,
+				) {
+					super.doUpdateVisitedHistory(view, url, isReload)
+					url?.let {
+						currentUrl = it
+					}
+				}
 			}
 		}
 
