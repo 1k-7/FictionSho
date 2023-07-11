@@ -6,6 +6,7 @@ import app.shosetsu.android.common.ext.logI
 import app.shosetsu.android.common.ext.logW
 import app.shosetsu.android.common.utils.CookieJarSync
 import app.shosetsu.android.common.utils.SiteProtector
+import app.shosetsu.lib.ShosetsuSharedLib
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -43,6 +44,12 @@ fun createOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
 	.cookieJar(CookieJarSync)
 	.addInterceptor { chain ->
 		return@addInterceptor slowRequest(chain, chain.request())
+	}.addNetworkInterceptor {
+		val request = it.request().newBuilder()
+		ShosetsuSharedLib.shosetsuHeaders.forEach { (name, value) ->
+			request.header(name, value)
+		}
+		it.proceed(request.build())
 	}.apply {
 		Logger.getLogger(OkHttpClient::class.java.name).level = Level.ALL
 	}
