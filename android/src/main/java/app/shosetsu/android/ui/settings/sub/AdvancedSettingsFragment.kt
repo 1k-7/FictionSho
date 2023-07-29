@@ -32,10 +32,8 @@ import app.shosetsu.android.common.SettingKey.AutoBookmarkFromQR
 import app.shosetsu.android.common.SettingKey.ConcurrentMemoryExperiment
 import app.shosetsu.android.common.SettingKey.ExposeTrueChapterDelete
 import app.shosetsu.android.common.SettingKey.LogToFile
-import app.shosetsu.android.common.SettingKey.ProxyHost
 import app.shosetsu.android.common.SettingKey.RequireDoubleBackToExit
 import app.shosetsu.android.common.SettingKey.SiteProtectionDelay
-import app.shosetsu.android.common.SettingKey.UseProxy
 import app.shosetsu.android.common.SettingKey.UseShosetsuAgent
 import app.shosetsu.android.common.SettingKey.UserAgent
 import app.shosetsu.android.common.SettingKey.VerifyCheckSum
@@ -50,7 +48,6 @@ import app.shosetsu.android.common.ext.viewModel
 import app.shosetsu.android.view.compose.ShosetsuCompose
 import app.shosetsu.android.view.compose.setting.ButtonSettingContent
 import app.shosetsu.android.view.compose.setting.DropdownSettingContent
-import app.shosetsu.android.view.compose.setting.ProxySettingsContent
 import app.shosetsu.android.view.compose.setting.SliderSettingContent
 import app.shosetsu.android.view.compose.setting.StringSettingContent
 import app.shosetsu.android.view.compose.setting.SwitchSettingContent
