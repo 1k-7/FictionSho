@@ -29,17 +29,12 @@ import app.shosetsu.android.BuildConfig
 import app.shosetsu.android.R
 import app.shosetsu.android.common.ShosetsuAccompanistWebChromeClient
 import app.shosetsu.android.common.consts.BundleKeys.BUNDLE_URL
-import app.shosetsu.android.common.ext.logI
-import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.common.ext.openInBrowser
 import app.shosetsu.android.common.ext.toast
 import app.shosetsu.android.common.ext.viewModelDi
-import app.shosetsu.android.common.utils.CookieJarSync
 import app.shosetsu.android.view.compose.ShosetsuCompose
 import app.shosetsu.android.viewmodel.abstracted.WebViewViewModel
 import com.google.accompanist.web.*
-import okhttp3.Cookie
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.closestDI
@@ -219,13 +214,6 @@ fun WebViewScreen(
 							},
 								text = {
 									Text(text = stringResource(R.string.open_in_browser))
-								}
-							)
-							DropdownMenuItem(onClick = {
-								onClearCookies(currentUrl); overflow = false
-							},
-								text = {
-									Text(text = stringResource(R.string.action_webview_clear_cookies))
 								}
 							)
 						}
