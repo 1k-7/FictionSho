@@ -5,10 +5,13 @@
 
 # Commit Message style
 
-Please follow the [Conventional Commits][cc] standard.
+If you have the time and ability, I recommend following the [Conventional Commits][cc] standard.
 
 Here are some sample commit headers:
 
 1. `feat: Add style support`
 2. `fix(reader): Resolve crashing from fast device rotation`
 3. `misc: Update README`
+
+
+[cc]: https://www.conventionalcommits.org/en/v1.0.0/
