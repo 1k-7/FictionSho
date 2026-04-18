@@ -16,9 +16,9 @@ allprojects {
 }
 
 tasks {
-    val clean by registering(Delete::class) {
-        delete(rootProject.layout.buildDirectory)
-    }
+	val clean by registering(Delete::class) {
+		delete(rootProject.layout.buildDirectory)
+	}
 
-    val androidDebugUpdateXML by registering(WriteDebugUpdate::class)
+	val androidDebugUpdateXML by registering(WriteDebugUpdate::class)
 }

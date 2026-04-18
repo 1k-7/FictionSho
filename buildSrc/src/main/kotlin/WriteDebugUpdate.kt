@@ -46,7 +46,7 @@ abstract class WriteDebugUpdate : DefaultTask() {
 
 	/** Task of this task */
 	@OptIn(ExperimentalSerializationApi::class)
-    @Throws(IOException::class)
+	@Throws(IOException::class)
 	@TaskAction
 	fun main() {
 		val file = outputFile.get().asFile
@@ -62,15 +62,16 @@ abstract class WriteDebugUpdate : DefaultTask() {
 			lastFile.writeText(commitCount.toString())
 
 			val releaseNotes = it.getLatestCommitMsg(current = commitCount, since = prevCommitCount)
-				.map { it
-					// Format it so it goes well into the json
-					//.replace("\n", "\",\n\t\t\t\t\"-")
-					.split("\n")
-					.map { it.trim() }
-					.filter { it.isNotBlank() }
-					.map { it.replace("\"", "'") }
-					.joinToString("\n\t\t\t\t") { "\"- $it\"," }
-					.removeSuffix(",")
+				.map {
+					it
+						// Format it so it goes well into the json
+						//.replace("\n", "\",\n\t\t\t\t\"-")
+						.split("\n")
+						.map { it.trim() }
+						.filter { it.isNotBlank() }
+						.map { it.replace("\"", "'") }
+						.joinToString("\n\t\t\t\t") { "\"- $it\"," }
+						.removeSuffix(",")
 				}
 
 			DebugUpdate(

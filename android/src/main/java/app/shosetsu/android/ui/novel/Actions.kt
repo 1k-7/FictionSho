@@ -88,7 +88,8 @@ fun NovelDownloadButton(
 		}
 	)
 
-	DropdownMenu(showDropDown,
+	DropdownMenu(
+		showDropDown,
 		onDismissRequest = { showDropDown = false }) {
 		DropdownMenuItem(
 			text = {
@@ -152,7 +153,8 @@ fun NovelMoreButton(
 		}
 	)
 
-	DropdownMenu(showDropDown,
+	DropdownMenu(
+		showDropDown,
 		onDismissRequest = { showDropDown = false }) {
 		if (canMigrate)
 			DropdownMenuItem(

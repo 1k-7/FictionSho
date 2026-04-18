@@ -221,28 +221,32 @@ fun WebViewScreen(
 							onClick = { overflow = !overflow }
 						)
 						DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
-							DropdownMenuItem(onClick = { navigator.reload(); overflow = false },
+							DropdownMenuItem(
+								onClick = { navigator.reload(); overflow = false },
 								text = {
 									Text(text = stringResource(R.string.action_webview_refresh))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onShare(currentUrl); overflow = false
-							},
+							DropdownMenuItem(
+								onClick = {
+									onShare(currentUrl); overflow = false
+								},
 								text = {
 									Text(text = stringResource(R.string.share))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onOpenInBrowser(currentUrl); overflow = false
-							},
+							DropdownMenuItem(
+								onClick = {
+									onOpenInBrowser(currentUrl); overflow = false
+								},
 								text = {
 									Text(text = stringResource(R.string.open_in_browser))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onClearCookies(currentUrl); overflow = false
-							},
+							DropdownMenuItem(
+								onClick = {
+									onClearCookies(currentUrl); overflow = false
+								},
 								text = {
 									Text(text = stringResource(R.string.action_webview_clear_cookies))
 								}

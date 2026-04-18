@@ -210,21 +210,21 @@ fun PreviewBrowseContent() {
 		query = "",
 		onSetQuery = {},
 		entities =
-		List(10) {
-			BrowseExtensionUI(
-				it,
-				"Fake a b c",
-				"",
-				"en",
-				installOptions = null,
-				isInstalled = true,
-				installedVersion = Version(1, 1, 1),
-				installedRepo = 1,
-				isUpdateAvailable = false,
-				updateVersion = Version(1, 2, 1),
-				isInstalling = false
-			)
-		}.toImmutableList(),
+			List(10) {
+				BrowseExtensionUI(
+					it,
+					"Fake a b c",
+					"",
+					"en",
+					installOptions = null,
+					isInstalled = true,
+					installedVersion = Version(1, 1, 1),
+					installedRepo = 1,
+					isUpdateAvailable = false,
+					updateVersion = Version(1, 2, 1),
+					isInstalling = false
+				)
+			}.toImmutableList(),
 		{},
 		{},
 		{ _, _ -> },
@@ -391,7 +391,8 @@ fun BrowseExtensionContent(
 	cancelInstall: () -> Unit
 ) {
 	Column(
-		Modifier.clickable(onClick = openCatalogue)
+		Modifier
+			.clickable(onClick = openCatalogue)
 			.padding(horizontal = 8.dp)
 	) {
 		Row(

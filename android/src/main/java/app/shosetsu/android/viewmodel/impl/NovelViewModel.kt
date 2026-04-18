@@ -143,7 +143,8 @@ class NovelViewModel(
 	override val selectedChaptersState: StateFlow<SelectedChaptersState> by lazy {
 		chaptersLive.map { rawChapters ->
 			val chapters = rawChapters.filter { it.isSelected }
-			SelectedChaptersState(showRemoveBookmark = chapters.any { it.bookmarked },
+			SelectedChaptersState(
+				showRemoveBookmark = chapters.any { it.bookmarked },
 				showBookmark = chapters.any { !it.bookmarked },
 				showDelete = chapters.any { it.isSaved },
 				showDownload = chapters.any { !it.isSaved },

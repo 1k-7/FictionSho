@@ -262,21 +262,27 @@ class ButtonElevation internal constructor(
 					is HoverInteraction.Enter -> {
 						interactions.add(interaction)
 					}
+
 					is HoverInteraction.Exit -> {
 						interactions.remove(interaction.enter)
 					}
+
 					is FocusInteraction.Focus -> {
 						interactions.add(interaction)
 					}
+
 					is FocusInteraction.Unfocus -> {
 						interactions.remove(interaction.focus)
 					}
+
 					is PressInteraction.Press -> {
 						interactions.add(interaction)
 					}
+
 					is PressInteraction.Release -> {
 						interactions.remove(interaction.press)
 					}
+
 					is PressInteraction.Cancel -> {
 						interactions.remove(interaction.press)
 					}
@@ -493,9 +499,10 @@ object ButtonDefaults2 {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SimpleIconButton(icon: ImageVector, description: String?,
-					 onClick: () -> Unit,
-					 modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = LocalContentColor.current
+fun SimpleIconButton(
+	icon: ImageVector, description: String?,
+	onClick: () -> Unit,
+	modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = LocalContentColor.current
 ) {
 	SimpleIconButton(description = description, enabled = enabled, onClick = onClick, modifier = modifier) {
 		Icon(
@@ -508,9 +515,10 @@ fun SimpleIconButton(icon: ImageVector, description: String?,
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SimpleIconButton(painter: Painter, description: String?,
-					 onClick: () -> Unit,
-					 modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = LocalContentColor.current
+fun SimpleIconButton(
+	painter: Painter, description: String?,
+	onClick: () -> Unit,
+	modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = LocalContentColor.current
 ) {
 	SimpleIconButton(description = description, enabled = enabled, onClick = onClick, modifier = modifier) {
 		Icon(
@@ -523,7 +531,13 @@ fun SimpleIconButton(painter: Painter, description: String?,
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SimpleIconButton(description: String?, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable (() -> Unit)) {
+fun SimpleIconButton(
+	description: String?,
+	onClick: () -> Unit,
+	modifier: Modifier = Modifier,
+	enabled: Boolean = true,
+	content: @Composable (() -> Unit)
+) {
 	if (description == null) {
 		IconButton(
 			onClick = onClick,

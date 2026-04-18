@@ -244,7 +244,16 @@ private fun ALibrarySettingsViewModel.LibraryUpdateCategories(
 	}.collectAsState(persistentListOf())
 
 	val context = LocalContext.current
-	val description by remember { derivedStateOf { getCategorySelectDescription(context, categories, includedCategoryIds, excludedCategoryIds) } }
+	val description by remember {
+		derivedStateOf {
+			getCategorySelectDescription(
+				context,
+				categories,
+				includedCategoryIds,
+				excludedCategoryIds
+			)
+		}
+	}
 	TriStateListPreferenceWidget(
 		title = title,
 		subtitle = description,

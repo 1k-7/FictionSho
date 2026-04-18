@@ -2,8 +2,8 @@
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
-            <certificates src="user"/>
-            <certificates src="system"/>
+            <certificates src="user" />
+            <certificates src="system" />
         </trust-anchors>
     </base-config>
 </network-security-config>
