@@ -114,31 +114,24 @@ class GetCatalogueListingDataUseCase(
 		iExtension: IExtension,
 		data: Map<Int, Any>
 	): List<ACatalogNovelUI> =
-		extSettingsRepo.getSelectedListing(iExtension.formatterID)
-			.let { selectedListing ->
-				// Load catalogue data
-
-				novelsRepository.getCatalogueData(
-					iExtension,
-					selectedListing,
-					data
-				).let { list ->
-					list.map { novelListing ->
-						novelListing.convertTo(iExtension)
-					}.mapNotNull { ne ->
-						// For each, insert and return a stripped card
-						// This operation is to pre-cache URL and ID so loading occurs smoothly
-						try {
-							novelsRepository.insertReturnStripped(ne)
-								?.let { (id, title, imageURL, bookmarked) ->
-									ACatalogNovelUI(id, title, imageURL, bookmarked)
-								}
-						} catch (e: SQLiteException) {
-							logE("Failed to load parse novel", e)
-							null
-						}
-					}
+		extSettingsRepo.getSelectedListing(iExtension.formatterID).let { selectedListing ->
+			// Load catalogue data
+			novelsRepository.getCatalogueData(
+				iExtension,
+				selectedListing,
+				data
+			)
+		}.let { list ->
+			list.mapNotNull { novelListing ->
+				// For each, insert and return a stripped card
+				// This operation is to pre-cache URL and ID so loading occurs smoothly
+				try {
+					novelsRepository.insertReturnStripped(novelListing.convertTo(iExtension))
+						?.let { ACatalogNovelUI(it, novelListing) }
+				} catch (e: SQLiteException) {
+					logE("Failed to load parse novel", e)
+					null
 				}
 			}
-
+		}
 }
