@@ -33,7 +33,6 @@ import java.io.IOException
  * 10 / May / 2020
  */
 class RemoteCatalogueDataSource : IRemoteCatalogueDataSource {
-
 	@Throws(HTTPException::class, IOException::class, LuaError::class)
 	override suspend fun search(
 		ext: IExtension,

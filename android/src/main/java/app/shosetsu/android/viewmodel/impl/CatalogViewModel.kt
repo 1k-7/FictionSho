@@ -449,12 +449,11 @@ class CatalogViewModel(
 		System.gc()
 	}
 
-
 	/**
 	 * @param [V] Value type of the hash map
 	 * @param [O] Expected value type
 	 */
-	private inline fun <reified O, V> ConcurrentHashMap<Int, V>.specialGetOrPut(
+	private inline fun <reified O, reified V> ConcurrentHashMap<Int, V>.specialGetOrPut(
 		key: Int,
 		getDefaultValue: () -> O
 	): O {
@@ -464,7 +463,6 @@ class CatalogViewModel(
 			value
 		} else {
 			val default = getDefaultValue()
-			@Suppress("UNCHECKED_CAST") // Good luck to whoever reads this
 			this[key] = default as V
 			default
 		}

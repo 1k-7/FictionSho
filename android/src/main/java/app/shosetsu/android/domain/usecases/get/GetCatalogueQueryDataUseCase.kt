@@ -142,5 +142,4 @@ class GetCatalogueQueryDataUseCase(
 		query: String,
 		filters: Map<Int, Any>
 	): MyPagingSource = MyPagingSource(ext, query, filters)
-
 }

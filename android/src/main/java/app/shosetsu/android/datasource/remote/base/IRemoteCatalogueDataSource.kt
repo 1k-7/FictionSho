@@ -39,7 +39,6 @@ interface IRemoteCatalogueDataSource {
 		data: Map<Int, Any>,
 	): List<Novel.Info>
 
-
 	/**
 	 * Loads a listings data from an extension
 	 */

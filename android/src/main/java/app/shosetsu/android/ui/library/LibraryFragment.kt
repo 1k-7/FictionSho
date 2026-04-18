@@ -360,7 +360,7 @@ fun LibraryAppBar(
 				RemoveAllButton(onRemove)
 				LibrarySelectedMoreButton(onMigrate, onTogglePin, onSetCategories)
 			},
-			navigationIcon = drawerIcon
+			navigationIcon = drawerIcon,
 		)
 	} else {
 		TopAppBar(
@@ -375,11 +375,10 @@ fun LibraryAppBar(
 					}
 				}
 			},
-			navigationIcon = drawerIcon
+			navigationIcon = drawerIcon,
 		)
 	}
 }
-
 
 /**
  * Pager for categories
