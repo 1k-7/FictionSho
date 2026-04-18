@@ -263,7 +263,7 @@ fun WebViewScreen(
 
 					is LoadingState.Loading -> {
 						val animatedProgress by animateFloatAsState(
-                            loadingState.progress,
+							loadingState.progress,
 							animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
 						)
 						LinearProgressIndicator(

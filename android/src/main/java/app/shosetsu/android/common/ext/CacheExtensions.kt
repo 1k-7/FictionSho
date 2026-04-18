@@ -30,5 +30,8 @@ import kotlin.time.toJavaDuration
 
 operator fun <K : Any, V : Any> Cache<K, V>.set(key: K, value: V): Unit = put(key, value)
 operator fun <K : Any, V : Any> Cache<K, V>.get(key: K): V? = getIfPresent(key)
-fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterAccess(duration: Duration) = expireAfterAccess(duration.toJavaDuration())
-fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterWrite(duration: Duration) = expireAfterWrite(duration.toJavaDuration())
+fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterAccess(duration: Duration) =
+	expireAfterAccess(duration.toJavaDuration())
+
+fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterWrite(duration: Duration) =
+	expireAfterWrite(duration.toJavaDuration())

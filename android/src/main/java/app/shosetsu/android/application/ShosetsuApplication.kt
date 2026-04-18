@@ -314,7 +314,7 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 				val stackTrace = Looper.getMainLooper().thread.stackTrace
 				val isChromiumCall = stackTrace.any { trace ->
 					trace.className.lowercase() in setOf("org.chromium.base.buildinfo", "org.chromium.base.apkinfo") &&
-							trace.methodName.lowercase() in setOf("getall", "getpackagename", "<init>")
+						trace.methodName.lowercase() in setOf("getall", "getpackagename", "<init>")
 				}
 
 				if (isChromiumCall) return WebViewUtil.spoofedPackageName(applicationContext)
