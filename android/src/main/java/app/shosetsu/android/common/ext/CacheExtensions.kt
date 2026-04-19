@@ -1,6 +1,9 @@
 package app.shosetsu.android.common.ext
 
 import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
+import kotlin.time.Duration
+import kotlin.time.toJavaDuration
 
 /*
  * This file is part of Shosetsu.
@@ -27,3 +30,5 @@ import com.google.common.cache.Cache
 
 operator fun <K : Any, V : Any> Cache<K, V>.set(key: K, value: V): Unit = put(key, value)
 operator fun <K : Any, V : Any> Cache<K, V>.get(key: K): V? = getIfPresent(key)
+fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterAccess(duration: Duration) = expireAfterAccess(duration.toJavaDuration())
+fun <K : Any, V : Any> CacheBuilder<K, V>.expireAfterWrite(duration: Duration) = expireAfterWrite(duration.toJavaDuration())

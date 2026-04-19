@@ -2,13 +2,14 @@ package app.shosetsu.android.datasource.local.memory.impl
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_EXT_LIB_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_EXTENSIONS
+import app.shosetsu.android.common.ext.expireAfterAccess
 import app.shosetsu.android.common.ext.get
 import app.shosetsu.android.common.ext.set
 import app.shosetsu.android.datasource.local.memory.base.IMemExtensionsDataSource
 import app.shosetsu.lib.IExtension
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import java.util.concurrent.TimeUnit.MINUTES
+import kotlin.time.Duration.Companion.minutes
 
 /*
  * This file is part of shosetsu.
@@ -35,7 +36,7 @@ class GuavaMemExtensionDataSource : IMemExtensionsDataSource {
 	/** Map of Formatter ID to Formatter */
 	private val extensionsCache: Cache<Int, IExtension> = CacheBuilder.newBuilder()
 		.maximumSize(MEMORY_MAX_EXTENSIONS)
-		.expireAfterAccess(MEMORY_EXPIRE_EXT_LIB_TIME, MINUTES)
+		.expireAfterAccess(MEMORY_EXPIRE_EXT_LIB_TIME.minutes)
 		.build()
 
 	override fun loadExtensionFromMemory(extensionID: Int): IExtension? {

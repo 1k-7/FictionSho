@@ -2,12 +2,13 @@ package app.shosetsu.android.datasource.local.memory.impl
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_CHAPTER_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_CHAPTERS
+import app.shosetsu.android.common.ext.expireAfterWrite
 import app.shosetsu.android.common.ext.get
 import app.shosetsu.android.common.ext.set
 import app.shosetsu.android.datasource.local.memory.base.IMemChaptersDataSource
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import java.util.concurrent.TimeUnit.MINUTES
+import kotlin.time.Duration.Companion.minutes
 
 /*
  * This file is part of shosetsu.
@@ -34,7 +35,7 @@ class GuavaMemChaptersDataSource : IMemChaptersDataSource {
 	/** Map of Chapter ID to Chapter Passage */
 	private val chapters: Cache<Int, ByteArray> = CacheBuilder.newBuilder()
 		.maximumSize(MEMORY_MAX_CHAPTERS)
-		.expireAfterWrite(MEMORY_EXPIRE_CHAPTER_TIME, MINUTES)
+		.expireAfterWrite(MEMORY_EXPIRE_CHAPTER_TIME.minutes)
 		.build()
 
 	override fun saveChapterInCache(chapterID: Int, chapter: ByteArray) {

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.viewModelScope
 import app.shosetsu.android.R
 import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.ext.expireAfterAccess
 import app.shosetsu.android.common.ext.get
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.set
@@ -34,7 +35,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import qrcode.QRCode
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.minutes
 
 /*
  * This file is part of Shosetsu.
@@ -113,7 +114,7 @@ class RepositoryViewModel(
 	private val qrCodeMap: Cache<Int, QRCodeData> =
 		CacheBuilder
 			.newBuilder()
-			.expireAfterAccess(1, TimeUnit.MINUTES)
+			.expireAfterAccess(1.minutes)
 			.build()
 
 	override val currentShare = MutableStateFlow<RepositoryUI?>(null)
