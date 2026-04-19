@@ -495,7 +495,7 @@ fun DownloadContent(
 				if (status == DOWNLOADING || status == WAITING) {
 					LinearProgressIndicator(modifier = Modifier.fillMaxWidth(.7f))
 				} else {
-					LinearProgressIndicator(0.0f, modifier = Modifier.fillMaxWidth(.7f))
+					LinearProgressIndicator(progress = { 0.0f }, modifier = Modifier.fillMaxWidth(.7f))
 				}
 
 				Text(

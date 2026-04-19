@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -224,7 +224,7 @@ fun SearchAction(
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		SimpleIconButton(
-			if (expanded) Icons.Default.ArrowBack else icon,
+			if (expanded) Icons.AutoMirrored.Filled.ArrowBack else icon,
 			if (expanded) stringResource(android.R.string.cancel) else stringResource(android.R.string.search_go),
 			onClick = {
 				if (expanded) {

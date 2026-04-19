@@ -15,7 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Text
@@ -89,7 +89,7 @@ fun BrowseControllerFilterMenu(viewModel: ABrowseViewModel) {
 			}
 		)
 
-		Divider(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+		HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
 
 		BrowseControllerInstalledFilter(
 			state = showOnlyInstalled,
@@ -151,7 +151,7 @@ fun BrowseControllerLanguagesFilter(
 
 		AnimatedVisibility(!hidden) {
 			languageList.let { (languages, state) ->
-				Divider(modifier = Modifier.padding(bottom = 8.dp, end = 8.dp, start = 8.dp))
+				HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp, end = 8.dp, start = 8.dp))
 
 				BrowseControllerLanguagesContent(
 					languages = languages,

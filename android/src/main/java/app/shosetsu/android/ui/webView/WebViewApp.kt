@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -180,7 +180,7 @@ fun WebViewScreen(
 					},
 					actions = {
 						SimpleIconButton(
-							Icons.Default.ArrowBack,
+							Icons.AutoMirrored.Filled.ArrowBack,
 							description = stringResource(R.string.action_webview_back),
 							onClick = {
 								if (navigator.canGoBack) {
@@ -190,7 +190,7 @@ fun WebViewScreen(
 							enabled = navigator.canGoBack,
 						)
 						SimpleIconButton(
-							Icons.Default.ArrowForward,
+							Icons.AutoMirrored.Filled.ArrowForward,
 							description = stringResource(R.string.action_webview_forward),
 							onClick = {
 								if (navigator.canGoForward) {
@@ -244,7 +244,7 @@ fun WebViewScreen(
 
 					is LoadingState.Loading -> {
 						val animatedProgress by animateFloatAsState(
-							(loadingState as? LoadingState.Loading)?.progress ?: 1f,
+                            loadingState.progress,
 							animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
 						)
 						LinearProgressIndicator(
