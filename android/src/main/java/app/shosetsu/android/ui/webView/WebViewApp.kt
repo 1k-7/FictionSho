@@ -44,6 +44,7 @@ import app.shosetsu.android.common.consts.BundleKeys.BUNDLE_URL
 import app.shosetsu.android.common.ext.openInBrowser
 import app.shosetsu.android.common.ext.toast
 import app.shosetsu.android.common.ext.viewModelDi
+import app.shosetsu.android.common.utils.webview.setDefaultSettings
 import app.shosetsu.android.ui.theme.ShosetsuTheme
 import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.viewmodel.abstracted.WebViewViewModel
@@ -290,12 +291,10 @@ fun WebViewScreen(
 				.padding(contentPadding),
 			navigator = navigator,
 			onCreated = { webView ->
+				webView.setDefaultSettings()
 				webView.settings.apply {
 					userAgentString = userAgent
-					javaScriptEnabled = true
 				}
-
-				CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
 				// Debug mode (chrome://inspect/#devices)
 				if (BuildConfig.DEBUG &&
