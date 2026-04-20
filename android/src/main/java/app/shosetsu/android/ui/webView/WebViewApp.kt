@@ -10,7 +10,9 @@ import android.webkit.WebView
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -170,11 +173,22 @@ fun WebViewScreen(
 			Box {
 				TopAppBar(
 					title = {
-						Text(
-							text = state.pageTitle ?: stringResource(R.string.app_name),
-							maxLines = 1,
-							overflow = TextOverflow.Ellipsis
-						)
+						Column {
+							Text(
+								text = state.pageTitle ?: stringResource(R.string.app_name),
+								maxLines = 1,
+								overflow = TextOverflow.Ellipsis
+							)
+							Text(
+								text = currentUrl,
+								style = MaterialTheme.typography.bodyMedium,
+								maxLines = 1,
+								overflow = TextOverflow.Ellipsis,
+								modifier = Modifier.basicMarquee(
+									repeatDelayMillis = 2_000,
+								),
+							)
+						}
 					},
 					navigationIcon = {
 						SimpleIconButton(Icons.Default.Close, description = null, onClick = onUp)
