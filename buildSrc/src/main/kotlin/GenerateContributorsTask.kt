@@ -43,24 +43,7 @@ abstract class GenerateContributorsTask : DefaultTask() {
     @OptIn(ExperimentalSerializationApi::class)
     @TaskAction
     fun main() {
-        val encountered = mutableMapOf<String, Contributor>()
-        Git.open(gitDir.get().asFile).use {
-            it.log().all().call().forEach { commit ->
-                val possibleAuthors = commit.authorIdent.name.let { Contributors.knownLinks[it.lowercase()] + it }
-                val name = possibleAuthors.firstNotNullOfOrNull { Contributors.preferredNames[it.lowercase()] }
-                    ?: possibleAuthors.firstOrNull { encountered.containsKey(it) }
-                    ?: possibleAuthors.first()
-                val contributor = encountered.getOrPut(name) { Contributor(
-                    name,
-                    commit.authorIdent.emailAddress,
-                    0,
-                    Contributors.websites[name.lowercase()],
-                    Contributors.knownImages[name.lowercase()],
-                ) }
-                contributor.commits++
-            }
-        }
-        val contributors = encountered.values.sortedByDescending { it.commits }
+        val contributors = getContributors()
 
         FileSpec.builder(className)
             .indent("\t")
@@ -93,6 +76,43 @@ abstract class GenerateContributorsTask : DefaultTask() {
             ).build()
             .writeTo(generatedKotlinDir.get().asFile)
     }
+
+    private fun getContributors(): List<Contributor> {
+        val encountered = UnionFind<String, EncounteredContributor>(merge = { a, b -> EncounteredContributor(
+            a.email,
+            a.commits + b.commits
+        )})
+        Git.open(gitDir.get().asFile).use {
+            it.log().all().call().forEach { commit ->
+                val name = commit.authorIdent.name
+                encountered.compute(name) { _, it ->
+                    it ?: EncounteredContributor(
+                        commit.authorIdent.emailAddress,
+                        0
+                    )
+                }!!.commits++
+                encountered.union(canonical = name, alternative = name.lowercase())
+            }
+        }
+
+        Contributors.preferredNames.forEach {
+            encountered.union(canonical = it.value, alternative = it.key)
+        }
+
+        return encountered.asSequence()
+            .mapNotNull { it.first to (it.second ?: return@mapNotNull null) }
+            .filter { it.second.commits > 0 }
+            .map { Contributor(
+                name = it.first,
+                email = it.second.email,
+                commits = it.second.commits,
+                website = Contributors.websites[it.first.lowercase()],
+                image = Contributors.images[it.first.lowercase()]
+            ) }
+            .sortedByDescending { it.commits }
+            .toList()
+    }
+    private data class EncounteredContributor(val email: String, var commits: Int)
 
     private fun CodeBlock.Builder.addNullableString(value: String?) =
         if (value == null) add("null") else add("%S", value)

@@ -1,17 +1,4 @@
-import com.google.common.collect.ImmutableMultimap
-import com.google.common.collect.Multimap
-
 object Contributors {
-    /**
-     * Association between a name and an image url.
-     *
-     * Name can be preferred name.
-     */
-    val knownImages = mapOf(
-        "clocks" to "https://gitlab.com/uploads/-/system/user/avatar/3931112/avatar.png?width=256",
-        "jfronny" to "https://gitlab.com/uploads/-/system/user/avatar/6260391/avatar.png?width=256",
-    )
-
     /**
      * Association between preferred names.
      *
@@ -27,10 +14,13 @@ object Contributors {
     )
 
     /**
-     * Associations between different usernames.
+     * Association between a name and an image url.
+     *
+     * Name can be preferred name.
      */
-    val knownLinks = bidiMultimapOf(
-        *preferredNames.map { it.key.lowercase() to it.value.lowercase() }.toTypedArray(),
+    val images = mapOf(
+        "clocks" to "https://gitlab.com/uploads/-/system/user/avatar/3931112/avatar.png?width=256",
+        "jfronny" to "https://gitlab.com/uploads/-/system/user/avatar/6260391/avatar.png?width=256",
     )
 
     /**
@@ -42,15 +32,4 @@ object Contributors {
         "clocks" to "https://doomsdayrs.page",
         "jfronny" to "https://jfronny.gitlab.io",
     )
-
-
-
-    private fun <K> bidiMultimapOf(vararg pairs: Pair<K & Any, K & Any>): Multimap<K, K> {
-        val builder = ImmutableMultimap.builder<K, K>()
-        pairs.forEach {
-            builder.put(it.first, it.second)
-            builder.put(it.second, it.first)
-        }
-        return builder.build()
-    }
 }

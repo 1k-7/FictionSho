@@ -53,7 +53,7 @@ abstract class WriteDebugUpdate : DefaultTask() {
 
 		val update: DebugUpdate = Git.open(gitDir.get().asFile).use {
 			// up the commit by one for when shosetsu-preview builds
-			val commitCount = it.getCommitCount().toInt()
+			val commitCount = it.getCommitCount()
 			// the last file contains the commit count since the last generation
 			val lastFile = lastFile.get().asFile
 			// get the previous commit count
