@@ -52,7 +52,12 @@ interface UpdatesDao : BaseDao<DBUpdate> {
 							SELECT
 								title
 							FROM chapters WHERE id = updates.chapterID
-						) AS chapterName, 
+						) AS chapterName,
+						(
+						    SELECT
+							    readingStatus
+							FROM chapters WHERE id = updates.chapterID
+						) AS readingStatus, 
 						( 
 							SELECT 
 								title

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.shosetsu.android.R
 import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.enums.ReadingStatus
 import app.shosetsu.android.common.ext.trimDate
 import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.view.compose.ErrorAction
@@ -350,8 +351,9 @@ fun PreviewUpdateItemContent() {
 			1,
 			System.currentTimeMillis(),
 			"This is a chapter",
+			ReadingStatus.READING,
 			"This is a novel",
-			""
+			"",
 		),
 		{},
 		{}
@@ -404,6 +406,11 @@ fun UpdateItemContent(
 		Column(
 			verticalArrangement = Arrangement.Center,
 			modifier = Modifier
+				.let {
+					if (updateUI.readingStatus == ReadingStatus.READ)
+						it.alpha(.5f)
+					else it
+				}
 				.fillMaxWidth()
 				.padding(4.dp),
 		) {
