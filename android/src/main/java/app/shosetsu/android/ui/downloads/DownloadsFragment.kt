@@ -39,7 +39,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,7 +64,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -90,6 +88,8 @@ import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.LazyColumnScrollbar
 import app.shosetsu.android.view.compose.NavigateBackButton
 import app.shosetsu.android.view.compose.SelectableBox
+import app.shosetsu.android.view.compose.SelectionBar
+import app.shosetsu.android.view.compose.SelectionTopAppBar
 import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.uimodels.model.DownloadUI
 import app.shosetsu.android.viewmodel.abstracted.ADownloadsViewModel
@@ -239,36 +239,31 @@ fun DownloadsContent(
 				}
 
 				if (selectedCount > 0) {
-					Card(
-						modifier = Modifier
-							.align(BiasAlignment(0f, 0.7f))
-					) {
-						Row {
-							SimpleIconButton(
-								Icons.Outlined.Pause,
-								stringResource(R.string.pause),
-								onClick = pauseSelection,
-								enabled = selectedDownloadState.pauseVisible
-							)
-							SimpleIconButton(
-								Icons.Default.PlayArrow,
-								stringResource(R.string.start),
-								onClick = startSelection,
-								enabled = selectedDownloadState.startVisible
-							)
-							SimpleIconButton(
-								Icons.Default.Refresh,
-								stringResource(R.string.restart),
-								onClick = startFailedSelection,
-								enabled = selectedDownloadState.restartVisible
-							)
-							SimpleIconButton(
-								Icons.Default.Delete,
-								stringResource(R.string.delete),
-								onClick = deleteSelected,
-								enabled = selectedDownloadState.deleteVisible
-							)
-						}
+					SelectionBar {
+						SimpleIconButton(
+							Icons.Outlined.Pause,
+							stringResource(R.string.pause),
+							onClick = pauseSelection,
+							enabled = selectedDownloadState.pauseVisible
+						)
+						SimpleIconButton(
+							Icons.Default.PlayArrow,
+							stringResource(R.string.start),
+							onClick = startSelection,
+							enabled = selectedDownloadState.startVisible
+						)
+						SimpleIconButton(
+							Icons.Default.Refresh,
+							stringResource(R.string.restart),
+							onClick = startFailedSelection,
+							enabled = selectedDownloadState.restartVisible
+						)
+						SimpleIconButton(
+							Icons.Default.Delete,
+							stringResource(R.string.delete),
+							onClick = deleteSelected,
+							enabled = selectedDownloadState.deleteVisible
+						)
 					}
 				}
 			}
@@ -369,20 +364,13 @@ fun DownloadsAppBar(
 	val behavior = enterAlwaysScrollBehavior()
 
 	if (selectedCount > 0) {
-		TopAppBar(
-			title = { Text("$selectedCount") },
+		SelectionTopAppBar(
 			scrollBehavior = behavior,
-			actions = {
-				InverseSelectionButton(onInverseSelection)
-				SelectAllButton(onSelectAll)
-				SelectBetweenButton(onSelectBetween)
-			},
-			colors = TopAppBarDefaults.topAppBarColors(
-				containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-			),
-			navigationIcon = {
-				DeselectAllButton(onClick = onDeselectAll)
-			}
+			selectedCount = selectedCount,
+			onSelectAll = onSelectAll,
+			onInverseSelection = onInverseSelection,
+			onSelectBetween = onSelectBetween,
+			onDeselectAll = onDeselectAll,
 		)
 	} else {
 		TopAppBar(

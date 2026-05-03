@@ -518,9 +518,9 @@ class NovelViewModel(
 
 	override val openLastReadResult = MutableSharedFlow<LastOpenResult>()
 
-	override val hasSelected: StateFlow<Boolean> by lazy {
-		this.chaptersLive.mapLatest { chapters -> chapters.any { it.isSelected } }.onIO()
-			.stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
+	override val selectedCount: StateFlow<Int> by lazy {
+		this.chaptersLive.mapLatest { chapters -> chapters.count { it.isSelected } }.onIO()
+			.stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
 	}
 
 	override fun bookmarkSelected() {
@@ -583,6 +583,19 @@ class NovelViewModel(
 
 			list.forEach {
 				selection[it.id] = true
+			}
+
+			selectedChapters.value = selection
+		}
+	}
+
+	override fun deselectAll() {
+		launchIO {
+			val list = chaptersLive.value
+			val selection = copySelected()
+
+			list.forEach {
+				selection[it.id] = false
 			}
 
 			selectedChapters.value = selection

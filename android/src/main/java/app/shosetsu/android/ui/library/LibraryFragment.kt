@@ -45,9 +45,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -77,6 +75,8 @@ import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.NovelCardCompressedContent
 import app.shosetsu.android.view.compose.NovelCardCozyContent
 import app.shosetsu.android.view.compose.NovelCardNormalContent
+import app.shosetsu.android.view.compose.SelectionBar
+import app.shosetsu.android.view.compose.SelectionTopAppBar
 import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.compose.pagerTabIndicatorOffset
 import app.shosetsu.android.view.compose.rememberFakePullRefreshState
@@ -263,10 +263,6 @@ fun LibraryContent(
 				selectedCount = selectedCount,
 				onInverseSelection = onInverseSelection,
 				onSelectAll = onSelectAll,
-				onRemove = onRemove,
-				onMigrate = onMigrate,
-				onTogglePin = onTogglePin,
-				onSetCategories = onSetCategories,
 				onDeselectAll = onDeselectAll,
 				onSelectBetween = onSelectBetween,
 				query = query,
@@ -309,6 +305,10 @@ fun LibraryContent(
 					onOpen = onOpen,
 					toggleSelection = toggleSelection,
 					toastNovel = toastNovel,
+					onRemove = onRemove,
+					onMigrate = onMigrate,
+					onTogglePin = onTogglePin,
+					onSetCategories = onSetCategories,
 				)
 			}
 		} else {
@@ -329,10 +329,6 @@ fun LibraryAppBar(
 	selectedCount: Int,
 	onInverseSelection: () -> Unit,
 	onSelectAll: () -> Unit,
-	onRemove: () -> Unit,
-	onMigrate: () -> Unit,
-	onTogglePin: () -> Unit,
-	onSetCategories: () -> Unit,
 	onDeselectAll: () -> Unit,
 	onSelectBetween: () -> Unit,
 	query: String,
@@ -345,22 +341,13 @@ fun LibraryAppBar(
 	val behavior = enterAlwaysScrollBehavior()
 
 	if (selectedCount > 0) {
-		TopAppBar(
-			title = { Text("$selectedCount") },
+		SelectionTopAppBar(
 			scrollBehavior = behavior,
-			actions = {
-				InverseSelectionButton(onInverseSelection)
-				SelectAllButton(onSelectAll)
-				SelectBetweenButton(onSelectBetween)
-				RemoveAllButton(onRemove)
-				LibrarySelectedMoreButton(onMigrate, onTogglePin, onSetCategories)
-			},
-			colors = TopAppBarDefaults.topAppBarColors(
-				containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-			),
-			navigationIcon = {
-				DeselectAllButton(onClick = onDeselectAll)
-			},
+			selectedCount = selectedCount,
+			onSelectAll = onSelectAll,
+			onInverseSelection = onInverseSelection,
+			onSelectBetween = onSelectBetween,
+			onDeselectAll = onDeselectAll,
 		)
 	} else {
 		TopAppBar(
@@ -396,8 +383,13 @@ fun LibraryPager(
 	onRefresh: (Int) -> Unit,
 	onOpen: (LibraryNovelUI) -> Unit,
 	toggleSelection: (LibraryNovelUI) -> Unit,
-	toastNovel: ((LibraryNovelUI) -> Unit)?
-) {
+	toastNovel: ((LibraryNovelUI) -> Unit)?,
+
+	onRemove: () -> Unit,
+	onMigrate: () -> Unit,
+	onTogglePin: () -> Unit,
+	onSetCategories: () -> Unit,
+) = Box {
 	val scope = rememberCoroutineScope()
 	val categoryPagerState = rememberPagerState { library.categories.size }
 	LaunchedEffect(categoryPagerState.currentPage) {
@@ -456,6 +448,13 @@ fun LibraryPager(
 				toggleSelection = toggleSelection,
 				toastNovel = toastNovel,
 			)
+		}
+	}
+
+	if (hasSelected) {
+		SelectionBar {
+			RemoveAllButton(onRemove)
+			LibrarySelectedMoreButton(onMigrate, onTogglePin, onSetCategories)
 		}
 	}
 }

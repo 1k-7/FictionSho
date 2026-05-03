@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.Resources
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -83,7 +84,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -115,6 +115,7 @@ import app.shosetsu.android.view.compose.ImageLoadingError
 import app.shosetsu.android.view.compose.LazyColumnScrollbar
 import app.shosetsu.android.view.compose.LongClickTextButton
 import app.shosetsu.android.view.compose.SelectableBox
+import app.shosetsu.android.view.compose.SelectionBar
 import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.compose.coverRatio
 import app.shosetsu.android.view.compose.placeholder
@@ -178,7 +179,7 @@ fun NovelInfoView(
 	val chapters by viewModel.chaptersLive.collectAsState()
 	val isRefreshing by viewModel.isRefreshing.collectAsState()
 	val selectedChaptersState by viewModel.selectedChaptersState.collectAsState()
-	val hasSelected by viewModel.hasSelected.collectAsState()
+	val selectedCount by viewModel.selectedCount.collectAsState()
 	val itemAt by viewModel.itemIndex.collectAsState()
 	val categories by viewModel.categories.collectAsState()
 	val novelCategories by viewModel.novelCategories.collectAsState()
@@ -312,7 +313,7 @@ fun NovelInfoView(
 				onToggleSelection = {
 					viewModel.toggleSelection(it)
 				},
-				selectionMode = hasSelected
+				selectionMode = selectedCount > 0
 			)
 		},
 		downloadSelected = viewModel::downloadSelected,
@@ -325,9 +326,10 @@ fun NovelInfoView(
 		},
 		bookmarkSelected = viewModel::bookmarkSelected,
 		unbookmarkSelected = viewModel::removeBookmarkFromSelected,
-		hasSelected = hasSelected,
+		selectedCount = selectedCount,
 		windowSize = windowSize,
 		onSelectAll = viewModel::selectAll,
+		onDeselectAll = viewModel::deselectAll,
 		onSelectBetween = viewModel::selectBetween,
 		onInverseSelection = viewModel::invertSelection,
 		showTrueDelete = showTrueDelete,
@@ -618,9 +620,10 @@ fun PreviewNovelInfoContent() {
 			markSelectedAsUnread = {},
 			bookmarkSelected = {},
 			unbookmarkSelected = {},
-			hasSelected = false,
+			selectedCount = 0,
 			windowSize = WindowSizeClass.calculateFromSize(DpSize(width = width, height = height)),
 			onSelectAll = {},
+			onDeselectAll = {},
 			onSelectBetween = {},
 			onInverseSelection = {},
 			showTrueDelete = false,
@@ -664,9 +667,10 @@ fun NovelInfoContent(
 	markSelectedAsUnread: () -> Unit,
 	bookmarkSelected: () -> Unit,
 	unbookmarkSelected: () -> Unit,
-	hasSelected: Boolean,
+	selectedCount: Int,
 	windowSize: WindowSizeClass,
 	onSelectAll: () -> Unit,
+	onDeselectAll: () -> Unit,
 	onSelectBetween: () -> Unit,
 	onInverseSelection: () -> Unit,
 	showTrueDelete: Boolean,
@@ -706,12 +710,11 @@ fun NovelInfoContent(
 		topBar = {
 			NovelAppBar(
 				onBack = onBack,
-				hasSelected = hasSelected,
+				selectedCount = selectedCount,
 				onSelectAll = onSelectAll,
+				onDeselectAll = onDeselectAll,
 				onSelectBetween = onSelectBetween,
 				onInverseSelection = onInverseSelection,
-				showTrueDelete = showTrueDelete,
-				onTrueDelete = onTrueDelete,
 				canMigrate = canMigrate,
 				onMigrate = onMigrate,
 				onJump = openChapterJump,
@@ -814,15 +817,17 @@ fun NovelInfoContent(
 			)
 
 			// Chapter Selection Bar
-			if (chapters != null && hasSelected) {
+			if (chapters != null && selectedCount > 0) {
 				ChapterSelectionBar(
-					selectedChaptersState,
-					downloadSelected,
-					deleteSelected,
-					markSelectedAsRead,
-					markSelectedAsUnread,
-					bookmarkSelected,
-					unbookmarkSelected
+                    selectedChaptersState = selectedChaptersState,
+                    downloadSelected = downloadSelected,
+                    deleteSelected = deleteSelected,
+                    markSelectedAsRead = markSelectedAsRead,
+                    markSelectedAsUnread = markSelectedAsUnread,
+                    bookmarkSelected = bookmarkSelected,
+                    unbookmarkSelected = unbookmarkSelected,
+                    showTrueDelete = showTrueDelete,
+                    onTrueDelete = onTrueDelete,
 				)
 			}
 
@@ -847,6 +852,8 @@ fun PreviewChapterSelectionBar() {
 			{},
 			{},
 			{},
+			true,
+			{}
 		)
 	}
 }
@@ -860,49 +867,51 @@ fun BoxScope.ChapterSelectionBar(
 	markSelectedAsUnread: () -> Unit,
 	bookmarkSelected: () -> Unit,
 	unbookmarkSelected: () -> Unit,
-) {
-	Card(
-		modifier = Modifier
-			.align(BiasAlignment(0f, 0.7f))
-	) {
-		Row {
-			SimpleIconButton(
-				Icons.Filled.Download,
-				stringResource(R.string.fragment_novel_selected_download),
-				onClick = downloadSelected,
-				enabled = selectedChaptersState.showDownload
-			)
-			SimpleIconButton(
-				Icons.Outlined.Delete,
-				stringResource(R.string.fragment_novel_selected_delete),
-				onClick = deleteSelected,
-				enabled = selectedChaptersState.showDelete
-			)
-			SimpleIconButton(
-				Icons.Filled.LibraryAddCheck,
-				stringResource(R.string.fragment_novel_selected_read),
-				onClick = markSelectedAsRead,
-				enabled = selectedChaptersState.showMarkAsRead
-			)
-			SimpleIconButton(
-				Icons.Outlined.LibraryAddCheck,
-				stringResource(R.string.fragment_novel_selected_unread),
-				onClick = markSelectedAsUnread,
-				enabled = selectedChaptersState.showMarkAsUnread
-			)
-			SimpleIconButton(
-				Icons.Filled.BookmarkAdd,
-				stringResource(R.string.fragment_novel_selected_bookmark),
-				onClick = bookmarkSelected,
-				enabled = selectedChaptersState.showBookmark
-			)
-			SimpleIconButton(
-				Icons.Outlined.BookmarkRemove,
-				stringResource(R.string.fragment_novel_selected_unbookmark),
-				onClick = unbookmarkSelected,
-				enabled = selectedChaptersState.showRemoveBookmark
-			)
-		}
+
+	showTrueDelete: Boolean,
+	onTrueDelete: () -> Unit,
+) = SelectionBar {
+    SimpleIconButton(
+        Icons.Filled.Download,
+        stringResource(R.string.fragment_novel_selected_download),
+        onClick = downloadSelected,
+        enabled = selectedChaptersState.showDownload
+    )
+    SimpleIconButton(
+        Icons.Outlined.Delete,
+        stringResource(R.string.fragment_novel_selected_delete),
+        onClick = deleteSelected,
+        enabled = selectedChaptersState.showDelete
+    )
+    SimpleIconButton(
+        Icons.Filled.LibraryAddCheck,
+        stringResource(R.string.fragment_novel_selected_read),
+        onClick = markSelectedAsRead,
+        enabled = selectedChaptersState.showMarkAsRead
+    )
+    SimpleIconButton(
+        Icons.Outlined.LibraryAddCheck,
+        stringResource(R.string.fragment_novel_selected_unread),
+        onClick = markSelectedAsUnread,
+        enabled = selectedChaptersState.showMarkAsUnread
+    )
+    SimpleIconButton(
+        Icons.Filled.BookmarkAdd,
+        stringResource(R.string.fragment_novel_selected_bookmark),
+        onClick = bookmarkSelected,
+        enabled = selectedChaptersState.showBookmark
+    )
+    SimpleIconButton(
+        Icons.Outlined.BookmarkRemove,
+        stringResource(R.string.fragment_novel_selected_unbookmark),
+        onClick = unbookmarkSelected,
+        enabled = selectedChaptersState.showRemoveBookmark
+    )
+	AnimatedVisibility(showTrueDelete) {
+		NovelSelectedMoreButton(
+			true,
+			onTrueDelete
+		)
 	}
 }
 

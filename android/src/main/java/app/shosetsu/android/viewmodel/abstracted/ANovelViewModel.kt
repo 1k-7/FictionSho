@@ -60,7 +60,7 @@ abstract class ANovelViewModel
 		data class Open(val chapterUI: ChapterUI) : LastOpenResult
 	}
 
-	abstract val hasSelected: StateFlow<Boolean>
+	abstract val selectedCount: StateFlow<Int>
 	abstract fun clearSelection()
 
 	abstract val itemIndex: StateFlow<Int>
@@ -189,6 +189,7 @@ abstract class ANovelViewModel
 	abstract fun removeBookmarkFromSelected()
 
 	abstract fun selectAll()
+	abstract fun deselectAll()
 
 	abstract fun invertSelection()
 	abstract fun downloadSelected()
