@@ -179,7 +179,6 @@ fun NovelInfoView(
 	val chapters by viewModel.chaptersLive.collectAsState()
 	val isRefreshing by viewModel.isRefreshing.collectAsState()
 	val selectedChaptersState by viewModel.selectedChaptersState.collectAsState()
-	val selectedCount by viewModel.selectedCount.collectAsState()
 	val itemAt by viewModel.itemIndex.collectAsState()
 	val categories by viewModel.categories.collectAsState()
 	val novelCategories by viewModel.novelCategories.collectAsState()
@@ -313,7 +312,7 @@ fun NovelInfoView(
 				onToggleSelection = {
 					viewModel.toggleSelection(it)
 				},
-				selectionMode = selectedCount > 0
+				selectionMode = selectedChaptersState.count > 0
 			)
 		},
 		downloadSelected = viewModel::downloadSelected,
@@ -326,7 +325,6 @@ fun NovelInfoView(
 		},
 		bookmarkSelected = viewModel::bookmarkSelected,
 		unbookmarkSelected = viewModel::removeBookmarkFromSelected,
-		selectedCount = selectedCount,
 		windowSize = windowSize,
 		onSelectAll = viewModel::selectAll,
 		onDeselectAll = viewModel::deselectAll,
@@ -620,7 +618,6 @@ fun PreviewNovelInfoContent() {
 			markSelectedAsUnread = {},
 			bookmarkSelected = {},
 			unbookmarkSelected = {},
-			selectedCount = 0,
 			windowSize = WindowSizeClass.calculateFromSize(DpSize(width = width, height = height)),
 			onSelectAll = {},
 			onDeselectAll = {},
@@ -667,7 +664,6 @@ fun NovelInfoContent(
 	markSelectedAsUnread: () -> Unit,
 	bookmarkSelected: () -> Unit,
 	unbookmarkSelected: () -> Unit,
-	selectedCount: Int,
 	windowSize: WindowSizeClass,
 	onSelectAll: () -> Unit,
 	onDeselectAll: () -> Unit,
@@ -710,7 +706,7 @@ fun NovelInfoContent(
 		topBar = {
 			NovelAppBar(
 				onBack = onBack,
-				selectedCount = selectedCount,
+				selectedCount = selectedChaptersState.count,
 				onSelectAll = onSelectAll,
 				onDeselectAll = onDeselectAll,
 				onSelectBetween = onSelectBetween,
@@ -817,7 +813,7 @@ fun NovelInfoContent(
 			)
 
 			// Chapter Selection Bar
-			if (chapters != null && selectedCount > 0) {
+			if (chapters != null && selectedChaptersState.count > 0) {
 				ChapterSelectionBar(
                     selectedChaptersState = selectedChaptersState,
                     downloadSelected = downloadSelected,

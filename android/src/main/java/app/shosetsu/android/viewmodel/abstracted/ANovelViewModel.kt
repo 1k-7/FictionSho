@@ -60,7 +60,7 @@ abstract class ANovelViewModel
 		data class Open(val chapterUI: ChapterUI) : LastOpenResult
 	}
 
-	abstract val selectedCount: StateFlow<Int>
+	abstract val selectedChaptersState: StateFlow<SelectedChaptersState>
 	abstract fun clearSelection()
 
 	abstract val itemIndex: StateFlow<Int>
@@ -70,7 +70,6 @@ abstract class ANovelViewModel
 
 	abstract val novelLive: StateFlow<NovelUI?>
 	abstract val chaptersLive: StateFlow<ImmutableList<ChapterUI>>
-	abstract val selectedChaptersState: StateFlow<SelectedChaptersState>
 
 	/**
 	 * Provides errors
@@ -257,6 +256,7 @@ abstract class ANovelViewModel
 	 */
 	@Immutable
 	data class SelectedChaptersState(
+		val count: Int = 0,
 		val showRemoveBookmark: Boolean = false,
 		val showBookmark: Boolean = false,
 		val showDelete: Boolean = false,
