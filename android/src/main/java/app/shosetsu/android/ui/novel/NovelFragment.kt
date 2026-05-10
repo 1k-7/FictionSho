@@ -867,42 +867,54 @@ fun BoxScope.ChapterSelectionBar(
 	showTrueDelete: Boolean,
 	onTrueDelete: () -> Unit,
 ) = SelectionBar {
-    SimpleIconButton(
-        Icons.Filled.Download,
-        stringResource(R.string.fragment_novel_selected_download),
-        onClick = downloadSelected,
-        enabled = selectedChaptersState.showDownload
-    )
-    SimpleIconButton(
-        Icons.Outlined.Delete,
-        stringResource(R.string.fragment_novel_selected_delete),
-        onClick = deleteSelected,
-        enabled = selectedChaptersState.showDelete
-    )
-    SimpleIconButton(
-        Icons.Filled.LibraryAddCheck,
-        stringResource(R.string.fragment_novel_selected_read),
-        onClick = markSelectedAsRead,
-        enabled = selectedChaptersState.showMarkAsRead
-    )
-    SimpleIconButton(
-        Icons.Outlined.LibraryAddCheck,
-        stringResource(R.string.fragment_novel_selected_unread),
-        onClick = markSelectedAsUnread,
-        enabled = selectedChaptersState.showMarkAsUnread
-    )
-    SimpleIconButton(
-        Icons.Filled.BookmarkAdd,
-        stringResource(R.string.fragment_novel_selected_bookmark),
-        onClick = bookmarkSelected,
-        enabled = selectedChaptersState.showBookmark
-    )
-    SimpleIconButton(
-        Icons.Outlined.BookmarkRemove,
-        stringResource(R.string.fragment_novel_selected_unbookmark),
-        onClick = unbookmarkSelected,
-        enabled = selectedChaptersState.showRemoveBookmark
-    )
+    AnimatedVisibility(selectedChaptersState.showDownload) {
+		SimpleIconButton(
+			Icons.Filled.Download,
+			stringResource(R.string.fragment_novel_selected_download),
+			onClick = downloadSelected,
+			enabled = selectedChaptersState.showDownload
+		)
+	}
+    AnimatedVisibility(selectedChaptersState.showDelete) {
+		SimpleIconButton(
+			Icons.Outlined.Delete,
+			stringResource(R.string.fragment_novel_selected_delete),
+			onClick = deleteSelected,
+			enabled = selectedChaptersState.showDelete
+		)
+	}
+    AnimatedVisibility(selectedChaptersState.showMarkAsRead) {
+		SimpleIconButton(
+			Icons.Filled.LibraryAddCheck,
+			stringResource(R.string.fragment_novel_selected_read),
+			onClick = markSelectedAsRead,
+			enabled = selectedChaptersState.showMarkAsRead
+		)
+	}
+    AnimatedVisibility(selectedChaptersState.showMarkAsUnread) {
+		SimpleIconButton(
+			Icons.Outlined.LibraryAddCheck,
+			stringResource(R.string.fragment_novel_selected_unread),
+			onClick = markSelectedAsUnread,
+			enabled = selectedChaptersState.showMarkAsUnread
+		)
+	}
+    AnimatedVisibility(selectedChaptersState.showBookmark) {
+		SimpleIconButton(
+			Icons.Filled.BookmarkAdd,
+			stringResource(R.string.fragment_novel_selected_bookmark),
+			onClick = bookmarkSelected,
+			enabled = selectedChaptersState.showBookmark
+		)
+	}
+    AnimatedVisibility(selectedChaptersState.showRemoveBookmark) {
+		SimpleIconButton(
+			Icons.Outlined.BookmarkRemove,
+			stringResource(R.string.fragment_novel_selected_unbookmark),
+			onClick = unbookmarkSelected,
+			enabled = selectedChaptersState.showRemoveBookmark
+		)
+	}
 	AnimatedVisibility(showTrueDelete) {
 		NovelSelectedMoreButton(
 			true,
