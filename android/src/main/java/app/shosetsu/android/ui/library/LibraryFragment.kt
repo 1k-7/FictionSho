@@ -25,11 +25,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material3.Badge
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -72,6 +76,7 @@ import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.ui.novel.CategoriesDialog
 import app.shosetsu.android.view.BottomSheetDialog
 import app.shosetsu.android.view.compose.ErrorContent
+import app.shosetsu.android.view.compose.MoreIconButton
 import app.shosetsu.android.view.compose.NovelCardCompressedContent
 import app.shosetsu.android.view.compose.NovelCardCozyContent
 import app.shosetsu.android.view.compose.NovelCardNormalContent
@@ -125,6 +130,7 @@ fun LibraryView(
 	val items by viewModel.liveData.collectAsState()
 	val isEmpty by viewModel.isEmptyFlow.collectAsState()
 	val selectedCount by viewModel.selectionCount.collectAsState()
+	val selectedPinCount by viewModel.selectedPinCount.collectAsState()
 	val type by viewModel.novelCardTypeFlow.collectAsState()
 	val badgeToast by viewModel.badgeUnreadToastFlow.collectAsState()
 
@@ -176,6 +182,7 @@ fun LibraryView(
 		columnsInV = columnsInV,
 		columnsInH = columnsInH,
 		selectedCount = selectedCount,
+		selectedPinCount = selectedPinCount,
 		onRefresh = viewModel::startUpdateManager,
 		onOpen = { (id) -> onOpenNovel(id) },
 		toggleSelection = viewModel::toggleSelection,
@@ -199,7 +206,8 @@ fun LibraryView(
 			viewModel.deselectAll()
 			onMigrate(selectedIds)
 		},
-		onTogglePin = viewModel::togglePinSelected,
+		onPin = viewModel::pinSelected,
+		onUnpin = viewModel::unpinSelected,
 		onSetCategories = viewModel::showCategoryDialog,
 		onDeselectAll = viewModel::deselectAll,
 		onSelectBetween = viewModel::selectBetween,
@@ -239,6 +247,7 @@ fun LibraryContent(
 	columnsInV: Int,
 	columnsInH: Int,
 	selectedCount: Int,
+	selectedPinCount: Int,
 	onRefresh: (Int) -> Unit,
 	onOpen: (LibraryNovelUI) -> Unit,
 	toggleSelection: (LibraryNovelUI) -> Unit,
@@ -247,7 +256,8 @@ fun LibraryContent(
 	onSelectAll: () -> Unit,
 	onRemove: () -> Unit,
 	onMigrate: () -> Unit,
-	onTogglePin: () -> Unit,
+	onPin: () -> Unit,
+	onUnpin: () -> Unit,
 	onSetCategories: () -> Unit,
 	onDeselectAll: () -> Unit,
 	onSelectBetween: () -> Unit,
@@ -301,13 +311,16 @@ fun LibraryContent(
 					columnsInV = columnsInV,
 					columnsInH = columnsInH,
 					hasSelected = selectedCount > 0,
+					hasPinnedSelected = selectedPinCount > 0,
+					hasUnpinnedSelected = selectedCount > selectedPinCount,
 					onRefresh = onRefresh,
 					onOpen = onOpen,
 					toggleSelection = toggleSelection,
 					toastNovel = toastNovel,
 					onRemove = onRemove,
 					onMigrate = onMigrate,
-					onTogglePin = onTogglePin,
+					onPin = onPin,
+					onUnpin = onUnpin,
 					onSetCategories = onSetCategories,
 				)
 			}
@@ -380,6 +393,8 @@ fun LibraryPager(
 	columnsInV: Int,
 	columnsInH: Int,
 	hasSelected: Boolean,
+	hasPinnedSelected: Boolean,
+	hasUnpinnedSelected: Boolean,
 	onRefresh: (Int) -> Unit,
 	onOpen: (LibraryNovelUI) -> Unit,
 	toggleSelection: (LibraryNovelUI) -> Unit,
@@ -387,7 +402,8 @@ fun LibraryPager(
 
 	onRemove: () -> Unit,
 	onMigrate: () -> Unit,
-	onTogglePin: () -> Unit,
+	onPin: () -> Unit,
+	onUnpin: () -> Unit,
 	onSetCategories: () -> Unit,
 ) = Box {
 	val scope = rememberCoroutineScope()
@@ -453,8 +469,39 @@ fun LibraryPager(
 
 	if (hasSelected) {
 		SelectionBar {
-			RemoveAllButton(onRemove)
-			LibrarySelectedMoreButton(onMigrate, onTogglePin, onSetCategories)
+			SimpleIconButton(
+				Icons.AutoMirrored.Outlined.Label,
+				stringResource(R.string.set_categories),
+				onClick = onSetCategories
+			)
+			AnimatedVisibility(hasUnpinnedSelected) {
+				SimpleIconButton(
+					Icons.Default.PushPin,
+					stringResource(R.string.pin_on_top),
+					onClick = onPin
+				)
+			}
+			AnimatedVisibility(hasPinnedSelected) {
+				SimpleIconButton(
+					Icons.Outlined.PushPin,
+					stringResource(R.string.unpin_from_top),
+					onClick = onUnpin
+				)
+			}
+			SimpleIconButton(
+				Icons.Default.Delete,
+				stringResource(R.string.remove),
+				onClick = onRemove
+			)
+
+			MoreIconButton {
+				DropdownMenuItem(
+					text = {
+						Text(stringResource(R.string.migrate_sources))
+					},
+					onClick = onMigrate
+				)
+			}
 		}
 	}
 }

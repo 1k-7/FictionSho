@@ -1,7 +1,6 @@
 package app.shosetsu.android.ui.library
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,8 +8,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewModule
@@ -90,17 +87,6 @@ fun SelectAllButton(
 	)
 }
 
-@Composable
-fun RemoveAllButton(
-	onClick: () -> Unit
-) {
-	SimpleIconButton(
-		Icons.Default.Delete,
-		stringResource(R.string.remove),
-		onClick = onClick
-	)
-}
-
 // Migrate is in more
 // Toggle pin is in more
 // Set categories is in more
@@ -125,50 +111,6 @@ fun SelectBetweenButton(
 		stringResource(R.string.select_between),
 		onClick = onClick
 	)
-}
-
-@Composable
-fun LibrarySelectedMoreButton(
-	onMigrate: () -> Unit,
-	onTogglePin: () -> Unit,
-	onSetCategories: () -> Unit
-) {
-	Box {
-		var showDropDown by remember { mutableStateOf(false) }
-		SimpleIconButton(
-			Icons.Default.MoreVert,
-			stringResource(R.string.more),
-			onClick = {
-				showDropDown = !showDropDown
-			}
-		)
-		DropdownMenu(
-			showDropDown,
-			onDismissRequest = {
-				showDropDown = false
-			}
-		) {
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.migrate_sources))
-				},
-				onClick = onMigrate
-			)
-
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.toggle_pin))
-				},
-				onClick = onTogglePin
-			)
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.set_categories))
-				},
-				onClick = onSetCategories
-			)
-		}
-	}
 }
 
 @Preview
