@@ -2,7 +2,6 @@ package app.shosetsu.android.ui.novel
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -14,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import app.shosetsu.android.R
+import app.shosetsu.android.view.compose.MoreIconButton
 import app.shosetsu.android.view.compose.SimpleIconButton
 
 /*
@@ -44,29 +44,15 @@ import app.shosetsu.android.view.compose.SimpleIconButton
 fun NovelSelectedMoreButton(
 	showTrueDelete: Boolean,
 	onTrueDelete: () -> Unit
-) {
-	var showDropDown by remember { mutableStateOf(false) }
-
-	SimpleIconButton(
-		Icons.Default.MoreVert,
-		stringResource(R.string.more),
-		onClick = {
-			showDropDown = true
-		}
-	)
-
-	if (showTrueDelete)
-		DropdownMenu(
-			expanded = showDropDown,
-			onDismissRequest = { showDropDown = false },
-		) {
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.fragment_novel_true_delete))
-				},
-				onClick = onTrueDelete
-			)
-		}
+) = MoreIconButton {
+	if (showTrueDelete) {
+		DropdownMenuItem(
+			text = {
+				Text(stringResource(R.string.fragment_novel_true_delete))
+			},
+			onClick = onTrueDelete
+		)
+	}
 }
 
 @Composable
@@ -141,42 +127,35 @@ fun NovelMoreButton(
 	onSetCategories: () -> Unit,
 	canMigrate: Boolean,
 	hasCategories: Boolean
-) {
-	var showDropDown by remember { mutableStateOf(false) }
+) = MoreIconButton { onDismissRequest ->
+	if (canMigrate)
+		DropdownMenuItem(
+			text = {
+				Text(stringResource(R.string.migrate_source))
+			},
+			onClick = {
+				onDismissRequest()
+				onMigrate()
+			}
+		)
 
-	SimpleIconButton(
-		Icons.Default.MoreVert,
-		stringResource(R.string.more),
+	DropdownMenuItem(
+		text = {
+			Text(stringResource(R.string.jump_to_chapter))
+		},
 		onClick = {
-			showDropDown = true
+			onDismissRequest()
+			onJump()
 		}
 	)
 
-	DropdownMenu(showDropDown,
-		onDismissRequest = { showDropDown = false }) {
-		if (canMigrate)
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.migrate_source))
-				},
-				onClick = onMigrate
-			)
-
+	if (hasCategories)
 		DropdownMenuItem(
 			text = {
-				Text(stringResource(R.string.jump_to_chapter))
+				Text(stringResource(R.string.set_categories))
 			},
-			onClick = onJump
+			onClick = onSetCategories
 		)
-
-		if (hasCategories)
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.set_categories))
-				},
-				onClick = onSetCategories
-			)
-	}
 }
 
 

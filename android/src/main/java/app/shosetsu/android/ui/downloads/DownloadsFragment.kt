@@ -34,12 +34,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -53,16 +51,12 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -79,13 +73,10 @@ import app.shosetsu.android.common.enums.DownloadStatus.PAUSED
 import app.shosetsu.android.common.enums.DownloadStatus.PENDING
 import app.shosetsu.android.common.enums.DownloadStatus.WAITING
 import app.shosetsu.android.common.ext.viewModelDi
-import app.shosetsu.android.ui.library.DeselectAllButton
-import app.shosetsu.android.ui.library.InverseSelectionButton
-import app.shosetsu.android.ui.library.SelectAllButton
-import app.shosetsu.android.ui.library.SelectBetweenButton
 import app.shosetsu.android.ui.theme.ShosetsuTheme
 import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.LazyColumnScrollbar
+import app.shosetsu.android.view.compose.MoreIconButton
 import app.shosetsu.android.view.compose.NavigateBackButton
 import app.shosetsu.android.view.compose.SelectableBox
 import app.shosetsu.android.view.compose.SelectionBar
@@ -390,38 +381,20 @@ fun DownloadsAppBar(
 fun DownloadsMoreOption(
 	onDeleteAll: () -> Unit,
 	onSetAllPending: () -> Unit
-) {
-	var showDropDown by remember { mutableStateOf(false) }
+) = MoreIconButton {
+	DropdownMenuItem(
+		text = {
+			Text(stringResource(R.string.fragment_downloads_set_all_pending_title))
+		},
+		onClick = onSetAllPending
+	)
 
-	Box {
-		SimpleIconButton(
-			Icons.Default.MoreVert, stringResource(R.string.more),
-			onClick = {
-				showDropDown = true
-			}
-		)
-
-		DropdownMenu(
-			showDropDown,
-			onDismissRequest = {
-				showDropDown = false
-			}
-		) {
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.fragment_downloads_set_all_pending_title))
-				},
-				onClick = onSetAllPending
-			)
-
-			DropdownMenuItem(
-				text = {
-					Text(stringResource(R.string.fragment_downloads_delete_all_title))
-				},
-				onClick = onDeleteAll
-			)
-		}
-	}
+	DropdownMenuItem(
+		text = {
+			Text(stringResource(R.string.fragment_downloads_delete_all_title))
+		},
+		onClick = onDeleteAll
+	)
 }
 
 @Preview

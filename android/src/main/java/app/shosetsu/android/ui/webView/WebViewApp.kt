@@ -49,6 +49,7 @@ import app.shosetsu.android.common.ext.toast
 import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.common.utils.webview.setDefaultSettings
 import app.shosetsu.android.ui.theme.ShosetsuTheme
+import app.shosetsu.android.view.compose.MoreIconButton
 import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.viewmodel.abstracted.WebViewViewModel
 import com.google.accompanist.web.AccompanistWebViewClient
@@ -214,34 +215,28 @@ fun WebViewScreen(
 							},
 							enabled = navigator.canGoForward,
 						)
-						var overflow by remember { mutableStateOf(false) }
-						SimpleIconButton(
-							Icons.Default.MoreVert,
-							description = stringResource(R.string.more),
-							onClick = { overflow = !overflow }
-						)
-						DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
-							DropdownMenuItem(onClick = { navigator.reload(); overflow = false },
+						MoreIconButton { onDismissRequest ->
+							DropdownMenuItem(onClick = { navigator.reload(); onDismissRequest() },
 								text = {
 									Text(text = stringResource(R.string.action_webview_refresh))
 								}
 							)
 							DropdownMenuItem(onClick = {
-								onShare(currentUrl); overflow = false
+								onShare(currentUrl); onDismissRequest()
 							},
 								text = {
 									Text(text = stringResource(R.string.share))
 								}
 							)
 							DropdownMenuItem(onClick = {
-								onOpenInBrowser(currentUrl); overflow = false
+								onOpenInBrowser(currentUrl); onDismissRequest()
 							},
 								text = {
 									Text(text = stringResource(R.string.open_in_browser))
 								}
 							)
 							DropdownMenuItem(onClick = {
-								onClearCookies(currentUrl); overflow = false
+								onClearCookies(currentUrl); onDismissRequest()
 							},
 								text = {
 									Text(text = stringResource(R.string.action_webview_clear_cookies))
