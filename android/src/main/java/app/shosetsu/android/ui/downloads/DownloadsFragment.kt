@@ -29,9 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
@@ -206,26 +204,18 @@ fun DownloadsContent(
 					.fillMaxSize()
 					.padding(padding)
 			) {
-				val state = rememberLazyListState()
-
-				LazyColumnScrollbar(listState = state) {
-					LazyColumn(
-						modifier = Modifier.fillMaxSize(),
-						contentPadding = PaddingValues(bottom = 140.dp),
-						state = state
-					) {
-						items(items, key = { it.chapterID }) {
-							DownloadContent(
-								it,
-								onClick = {
-									if (selectedCount > 0)
-										toggleSelection(it)
-								},
-								onLongClick = {
+				LazyColumnScrollbar(contentPadding = PaddingValues(bottom = 140.dp)) {
+					items(items, key = { it.chapterID }) {
+						DownloadContent(
+							it,
+							onClick = {
+								if (selectedCount > 0)
 									toggleSelection(it)
-								}
-							)
-						}
+							},
+							onLongClick = {
+								toggleSelection(it)
+							}
+						)
 					}
 				}
 

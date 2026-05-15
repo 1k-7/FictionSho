@@ -761,37 +761,31 @@ fun NovelInfoContent(
 
 				Box(Modifier.fillMaxSize()) {
 					val state = rememberLazyListState()
-					LazyColumnScrollbar(listState = state) {
-						LazyColumn(
-							modifier = Modifier.fillMaxSize(),
-							state = state,
-							contentPadding = PaddingValues(bottom = 256.dp)
-						) {
-							if (novelInfo != null) {
-								if (!splitColumn)
-									item {
-										header(novelInfo)
-									}
-							} else {
+					LazyColumnScrollbar(state = state, contentPadding = PaddingValues(bottom = 140.dp)) {
+						if (novelInfo != null) {
+							if (!splitColumn)
 								item {
-									LinearProgressIndicator(
-										modifier = Modifier.fillMaxWidth()
-									)
+									header(novelInfo)
 								}
+						} else {
+							item {
+								LinearProgressIndicator(
+									modifier = Modifier.fillMaxWidth()
+								)
 							}
-
-							stickyHeader(key = "sticky:chapter") {
-								Surface(tonalElevation = 1.dp) {
-									NovelChapterBar(
-										chapters?.size ?: 0,
-										openChapterJump,
-										openFilter
-									)
-								}
-							}
-
-							if (chapters != null) items(chapters) { chapterContent(it) }
 						}
+
+						stickyHeader(key = "sticky:chapter") {
+							Surface(tonalElevation = 1.dp) {
+								NovelChapterBar(
+									chapters?.size ?: 0,
+									openChapterJump,
+									openFilter
+								)
+							}
+						}
+
+						if (chapters != null) items(chapters) { chapterContent(it) }
 					}
 
 					// Do not save progress when there is nothing being displayed
