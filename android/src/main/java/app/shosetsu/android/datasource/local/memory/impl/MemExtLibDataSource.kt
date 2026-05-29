@@ -2,8 +2,8 @@ package app.shosetsu.android.datasource.local.memory.impl
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_EXTENSION_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_EXT_LIBS
-import app.shosetsu.android.datasource.local.memory.base.IMemDataSourceFactory
 import app.shosetsu.android.datasource.local.memory.base.IMemExtLibDataSource
+import app.shosetsu.android.datasource.local.memory.base.ICache
 import kotlin.time.Duration.Companion.hours
 
 /*
@@ -27,9 +27,9 @@ import kotlin.time.Duration.Companion.hours
  * shosetsu
  * 13 / 05 / 2020
  */
-class MemExtLibDataSource(factory: IMemDataSourceFactory) : IMemExtLibDataSource {
+class MemExtLibDataSource(factory: ICache.Factory) : IMemExtLibDataSource {
 	/** Library paring */
-	private val libraries: IMemDataSourceFactory.Source<String, String> =
+	private val libraries: ICache<String, String> =
 		factory.create(MEMORY_EXPIRE_EXTENSION_TIME.hours, MEMORY_MAX_EXT_LIBS)
 
 	override fun loadLibrary(name: String): String? {

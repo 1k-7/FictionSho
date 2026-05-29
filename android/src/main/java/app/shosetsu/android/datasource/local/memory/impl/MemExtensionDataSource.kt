@@ -2,8 +2,8 @@ package app.shosetsu.android.datasource.local.memory.impl
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_EXT_LIB_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_EXTENSIONS
-import app.shosetsu.android.datasource.local.memory.base.IMemDataSourceFactory
 import app.shosetsu.android.datasource.local.memory.base.IMemExtensionsDataSource
+import app.shosetsu.android.datasource.local.memory.base.ICache
 import app.shosetsu.lib.IExtension
 import kotlin.time.Duration.Companion.minutes
 
@@ -28,9 +28,9 @@ import kotlin.time.Duration.Companion.minutes
  * shosetsu
  * 04 / 05 / 2020
  */
-class MemExtensionDataSource(factory: IMemDataSourceFactory) : IMemExtensionsDataSource {
+class MemExtensionDataSource(factory: ICache.Factory) : IMemExtensionsDataSource {
 	/** Map of Formatter ID to Formatter */
-	private val extensionsCache: IMemDataSourceFactory.Source<Int, IExtension> =
+	private val extensionsCache: ICache<Int, IExtension> =
 		factory.create(MEMORY_EXPIRE_EXT_LIB_TIME.minutes, MEMORY_MAX_EXTENSIONS)
 
 	override fun loadExtensionFromMemory(extensionID: Int): IExtension? {

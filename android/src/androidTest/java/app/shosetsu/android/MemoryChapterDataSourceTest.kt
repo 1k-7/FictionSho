@@ -2,7 +2,7 @@ package app.shosetsu.android
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_CHAPTER_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_CHAPTERS
-import app.shosetsu.android.datasource.local.memory.impl.ConMemoryDataSourceFactory
+import app.shosetsu.android.datasource.local.memory.impl.ConCacheFactory
 import app.shosetsu.android.datasource.local.memory.impl.MemChaptersDataSource
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -36,7 +36,7 @@ import kotlin.time.Duration.Companion.minutes
  * Tests the [app.shosetsu.android.datasource.local.memory.base.IMemChaptersDataSource]
  */
 class MemoryChapterDataSourceTest {
-	private val memorySource by lazy { MemChaptersDataSource(ConMemoryDataSourceFactory()) }
+	private val memorySource by lazy { MemChaptersDataSource(ConCacheFactory()) }
 	private val expireTime by lazy { MEMORY_EXPIRE_CHAPTER_TIME.minutes.inWholeMilliseconds }
 
 	/**

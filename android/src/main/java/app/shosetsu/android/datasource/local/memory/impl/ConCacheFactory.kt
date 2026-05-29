@@ -1,19 +1,19 @@
 package app.shosetsu.android.datasource.local.memory.impl
 
-import app.shosetsu.android.datasource.local.memory.base.IMemDataSourceFactory
+import app.shosetsu.android.datasource.local.memory.base.ICache
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 
-class ConMemoryDataSourceFactory : IMemDataSourceFactory {
+class ConCacheFactory : ICache.Factory {
     override fun <K : Any, V : Any> create(
         expireDuration: Duration,
         maxSize: Int
-    ): IMemDataSourceFactory.Source<K, V> = Source(expireDuration.inWholeMilliseconds, maxSize)
+    ): ICache<K, V> = Cache(expireDuration.inWholeMilliseconds, maxSize)
 
-    private class Source<K : Any, V : Any>(
+    private class Cache<K : Any, V : Any>(
         private val expireTime: Long,
         private val maxSize: Int,
-    ) : IMemDataSourceFactory.Source<K, V> {
+    ) : ICache<K, V> {
         private val _hashMap = ConcurrentHashMap<K, Pair<Long, V>>()
 
         /**

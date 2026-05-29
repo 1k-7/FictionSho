@@ -285,7 +285,8 @@ val viewModelsModule: DI.Module = DI.Module("view_models_module") {
 			updateRepositoryUseCase = instance(),
 			startRepositoryUpdateManagerUseCase = instance(),
 			forceInsertRepositoryUseCase = instance(),
-			isOnlineUseCase = instance()
+			isOnlineUseCase = instance(),
+			cacheFactory = instance(),
 		)
 	}
 

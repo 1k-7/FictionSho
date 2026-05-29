@@ -3,7 +3,7 @@ package app.shosetsu.android.datasource.local.memory.impl
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_CHAPTER_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_CHAPTERS
 import app.shosetsu.android.datasource.local.memory.base.IMemChaptersDataSource
-import app.shosetsu.android.datasource.local.memory.base.IMemDataSourceFactory
+import app.shosetsu.android.datasource.local.memory.base.ICache
 import kotlin.time.Duration.Companion.minutes
 
 /*
@@ -27,9 +27,9 @@ import kotlin.time.Duration.Companion.minutes
  * shosetsu
  * 04 / 05 / 2020
  */
-class MemChaptersDataSource(factory: IMemDataSourceFactory) : IMemChaptersDataSource {
+class MemChaptersDataSource(factory: ICache.Factory) : IMemChaptersDataSource {
 	/** Map of Chapter ID to Chapter Passage */
-	private val chapters: IMemDataSourceFactory.Source<Int, ByteArray> =
+	private val chapters: ICache<Int, ByteArray> =
 		factory.create(MEMORY_EXPIRE_CHAPTER_TIME.minutes, MEMORY_MAX_CHAPTERS)
 
 	override fun saveChapterInCache(chapterID: Int, chapter: ByteArray) {
