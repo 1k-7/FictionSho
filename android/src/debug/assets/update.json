@@ -1,8 +1,8 @@
 {
-	"latestVersion":"3243",
-	"url":"https://cdn.shosetsu.app/debug/r3242/shosetsu-r3242.apk",
-	"releaseNotes":[
-        "Good luck reading all of the following",
+	"latestVersion": "3243",
+	"url": "https://cdn.shosetsu.app/debug/r3242/shosetsu-r3242.apk",
+	"releaseNotes": [
+		"Good luck reading all of the following",
 		"- perf: avoid string operations in actualElement",
 		"- This has almost the same behavior, but since we avoid using `ownText`, we can entirely bypass its creation of string concatenation machinery.",
 		"- There is one behavioral difference: A simple `<br>` is no longer enough to traverse up, but I think that makes sense, so I also adjusted the selector accordingly.",

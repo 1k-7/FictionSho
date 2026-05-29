@@ -156,14 +156,16 @@ fun PreviewAboutContent() = ShosetsuTheme(AppThemes.LIGHT) {
 		onOpenKofi = {
 		},
 		onBack = {},
-			contributors = listOf(Contributor(
+		contributors = listOf(
+			Contributor(
 				"Clocks",
 				"doomsdayrs.page",
 				0,
 				null,
 				null,
-			))
+			)
 		)
+	)
 
 }
 
@@ -177,7 +179,7 @@ fun ContributorItem(
 		NovelCardCozyContent(
 			contributor.name,
 			contributor.image ?: "",
-			onClick =  {
+			onClick = {
 				if (!contributor.website.isNullOrBlank())
 					uriHandler.openUri(contributor.website)
 			},

@@ -80,7 +80,8 @@ fun BrowseControllerFilterMenu(viewModel: ABrowseViewModel) {
 			.padding(vertical = 16.dp)
 			.verticalScroll(rememberScrollState())
 	) {
-		BrowseControllerLanguagesFilter(languageList, hideLanguageFilter,
+		BrowseControllerLanguagesFilter(
+			languageList, hideLanguageFilter,
 			setLanguageFilterState = { l, s ->
 				viewModel.setLanguageFiltered(l, s)
 			},

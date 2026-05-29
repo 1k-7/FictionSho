@@ -199,12 +199,12 @@ class LibraryViewModel(
 
 	override val selectedPinCount: StateFlow<Int> by lazy {
 		liveData.mapLatest { ui ->
-            ui?.novels
-                .orEmpty()
-                .flatMap { it.value }
-                .distinctBy { it.id }
+			ui?.novels
+				.orEmpty()
+				.flatMap { it.value }
+				.distinctBy { it.id }
 				.count { it.isSelected && it.pinned }
-        }.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
+		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
 	}
 
 	override val genresFlow: Flow<ImmutableList<String>> by lazy {

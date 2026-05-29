@@ -1012,7 +1012,7 @@ class ChapterReaderViewModel(
 					// Find the current chapter
 					val item = liveData.first { it != null }
 						?.find { (it as? ReaderChapterUI)?.id == chapterId }
-							as? ReaderChapterUI ?: return@coroutineScope
+						as? ReaderChapterUI ?: return@coroutineScope
 
 					System.gc()
 

@@ -370,7 +370,11 @@ fun LibraryAppBar(
 				AnimatedVisibility(!isEmpty) {
 					Row {
 						SearchAction(query, onSearch, immediateSearch = true)
-						SimpleIconButton(Icons.Outlined.FilterList, stringResource(R.string.filter), onClick = onShowFilterMenu)
+						SimpleIconButton(
+							Icons.Outlined.FilterList,
+							stringResource(R.string.filter),
+							onClick = onShowFilterMenu
+						)
 						RefreshButton(onRefresh)
 					}
 				}

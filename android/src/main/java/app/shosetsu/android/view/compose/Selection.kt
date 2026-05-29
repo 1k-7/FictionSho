@@ -22,37 +22,37 @@ import app.shosetsu.android.ui.library.SelectBetweenButton
 
 @Composable
 fun BoxScope.SelectionBar(content: @Composable RowScope.() -> Unit) {
-    Card(
-        modifier = Modifier
-            .align(BiasAlignment(0f, 0.7f))
-    ) {
-        Row {
-            content()
-        }
-    }
+	Card(
+		modifier = Modifier
+			.align(BiasAlignment(0f, 0.7f))
+	) {
+		Row {
+			content()
+		}
+	}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionTopAppBar(
-    scrollBehavior: TopAppBarScrollBehavior,
-    selectedCount: Int,
-    onSelectAll: () -> Unit,
-    onInverseSelection: () -> Unit,
-    onSelectBetween: () -> Unit,
-    onDeselectAll: () -> Unit,
+	scrollBehavior: TopAppBarScrollBehavior,
+	selectedCount: Int,
+	onSelectAll: () -> Unit,
+	onInverseSelection: () -> Unit,
+	onSelectBetween: () -> Unit,
+	onDeselectAll: () -> Unit,
 ) = TopAppBar(
-    title = { Text("$selectedCount") },
-    scrollBehavior = scrollBehavior,
-    actions = {
-        SelectAllButton(onSelectAll)
-        InverseSelectionButton(onInverseSelection)
-        SelectBetweenButton(onSelectBetween)
-    },
-    colors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-    ),
-    navigationIcon = {
-        DeselectAllButton(onDeselectAll)
-    },
+	title = { Text("$selectedCount") },
+	scrollBehavior = scrollBehavior,
+	actions = {
+		SelectAllButton(onSelectAll)
+		InverseSelectionButton(onInverseSelection)
+		SelectBetweenButton(onSelectBetween)
+	},
+	colors = TopAppBarDefaults.topAppBarColors(
+		containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+	),
+	navigationIcon = {
+		DeselectAllButton(onDeselectAll)
+	},
 )

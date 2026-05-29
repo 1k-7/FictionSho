@@ -74,7 +74,8 @@ fun NovelDownloadButton(
 		}
 	)
 
-	DropdownMenu(showDropDown,
+	DropdownMenu(
+		showDropDown,
 		onDismissRequest = { showDropDown = false }) {
 		DropdownMenuItem(
 			text = {

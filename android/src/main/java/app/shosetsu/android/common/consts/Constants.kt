@@ -34,7 +34,7 @@ const val DEFAULT_USER_AGENT =
  */
 val SHOSETSU_USER_AGENT =
 	"Shosetsu/${BuildConfig.VERSION_NAME} " +
-			"(Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL})"
+		"(Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL})"
 
 const val SELECTED_STROKE_WIDTH: Int = 4
 

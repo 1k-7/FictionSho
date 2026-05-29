@@ -216,28 +216,32 @@ fun WebViewScreen(
 							enabled = navigator.canGoForward,
 						)
 						MoreIconButton { onDismissRequest ->
-							DropdownMenuItem(onClick = { navigator.reload(); onDismissRequest() },
+							DropdownMenuItem(
+								onClick = { navigator.reload(); onDismissRequest() },
 								text = {
 									Text(text = stringResource(R.string.action_webview_refresh))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onShare(currentUrl); onDismissRequest()
-							},
+							DropdownMenuItem(
+								onClick = {
+									onShare(currentUrl); onDismissRequest()
+								},
 								text = {
 									Text(text = stringResource(R.string.share))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onOpenInBrowser(currentUrl); onDismissRequest()
-							},
+							DropdownMenuItem(
+								onClick = {
+									onOpenInBrowser(currentUrl); onDismissRequest()
+								},
 								text = {
 									Text(text = stringResource(R.string.open_in_browser))
 								}
 							)
-							DropdownMenuItem(onClick = {
-								onClearCookies(currentUrl); onDismissRequest()
-							},
+							DropdownMenuItem(
+								onClick = {
+									onClearCookies(currentUrl); onDismissRequest()
+								},
 								text = {
 									Text(text = stringResource(R.string.action_webview_clear_cookies))
 								}
@@ -254,7 +258,7 @@ fun WebViewScreen(
 
 					is LoadingState.Loading -> {
 						val animatedProgress by animateFloatAsState(
-                            loadingState.progress,
+							loadingState.progress,
 							animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
 						)
 						LinearProgressIndicator(
