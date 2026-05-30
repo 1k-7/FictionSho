@@ -14,11 +14,11 @@ tasks.preBuild { dependsOn(generateContributors) }
 val CI_MODE = System.getenv("CI_MODE") == "true"
 
 android {
-	compileSdk = 35
+	compileSdk = 37
 	defaultConfig {
 		applicationId = "app.shosetsu.android"
 		minSdk = 22
-		targetSdk = 35
+		targetSdk = 37
 		versionCode = 46
 		versionName = "2.5.0"
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
