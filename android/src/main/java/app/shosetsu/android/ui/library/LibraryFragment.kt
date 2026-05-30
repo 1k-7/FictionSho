@@ -75,6 +75,7 @@ import app.shosetsu.android.common.ext.onIO
 import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.ui.novel.CategoriesDialog
 import app.shosetsu.android.view.BottomSheetDialog
+import app.shosetsu.android.view.compose.ErrorAction
 import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.MoreIconButton
 import app.shosetsu.android.view.compose.NovelCardCompressedContent
@@ -124,6 +125,7 @@ fun LibraryView(
 	onOpenNovel: (novelId: Int) -> Unit,
 	onMigrate: (ids: List<Int>) -> Unit,
 	drawerIcon: @Composable () -> Unit,
+	onGoToBrowse: () -> Unit
 ) {
 	val viewModel = viewModelDi<ALibraryViewModel>()
 
@@ -215,7 +217,8 @@ fun LibraryView(
 		onSearch = viewModel::setQuery,
 		hostState = hostState,
 		onShowFilterMenu = viewModel::showFilterMenu,
-		drawerIcon = drawerIcon
+		drawerIcon = drawerIcon,
+		onGoToBrowse = onGoToBrowse
 	)
 	if (isCategoriesDialogOpen) {
 		CategoriesDialog(
@@ -265,7 +268,8 @@ fun LibraryContent(
 	onSearch: (String) -> Unit,
 	hostState: SnackbarHostState,
 	onShowFilterMenu: () -> Unit,
-	drawerIcon: @Composable () -> Unit
+	drawerIcon: @Composable () -> Unit,
+	onGoToBrowse: () -> Unit
 ) {
 	Scaffold(
 		topBar = {
@@ -327,7 +331,8 @@ fun LibraryContent(
 		} else {
 			ErrorContent(
 				stringResource(R.string.empty_library_message),
-				modifier = Modifier.padding(paddingValues)
+				modifier = Modifier.padding(paddingValues),
+				actions = ErrorAction(R.string.empty_library_message_go_to_browse, onGoToBrowse)
 			)
 		}
 	}

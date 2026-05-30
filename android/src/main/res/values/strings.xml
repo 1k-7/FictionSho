@@ -723,5 +723,6 @@
 	<string name="settings_backup_start_migration_title">Migrate Backups</string>
 	<string name="settings_backup_start_migration_desc">A manual override to migrate backups out of Shosetsu.</string>
 	<string name="text_filter">Text filter</string>
+	<string name="empty_library_message_go_to_browse">Go to Browse.</string>
 
 </resources>
