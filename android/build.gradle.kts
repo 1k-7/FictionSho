@@ -79,8 +79,8 @@ android {
 			versionNameSuffix = Git.open(rootProject.projectDir.resolve(".git")).use { "-${it.getCommitCount()}" }
 			applicationIdSuffix = ".debug"
 			isDebuggable = true
-			isMinifyEnabled = false
-			isShrinkResources = false
+			isMinifyEnabled = !CI_MODE
+			isShrinkResources = !CI_MODE
 			proguardFiles(
 				getDefaultProguardFile("proguard-android-optimize.txt"),
 				"proguard-rules.pro"
