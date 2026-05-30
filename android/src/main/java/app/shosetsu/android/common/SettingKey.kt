@@ -112,7 +112,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object ReaderHtmlCss : StringKey(
 		"readerHtmlCss",
 		"""
-			
+
 		""".trimIndent()
 	)
 
@@ -185,7 +185,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	// Update options
 	object DownloadNewNovelChapters : BooleanKey("isDownloadOnUpdate", false)
 	object OnlyUpdateOngoingNovels : BooleanKey("onlyUpdateOngoing", false)
-	object UpdateNovelsOnStartup : BooleanKey("updateOnStartup", true)
+	object UpdateNovelsOnStartup : BooleanKey("updateOnStartup", false)
 
 	object IncludeCategoriesInUpdate : StringSetKey("includedCategoriesInUpdate", emptySet())
 	object ExcludedCategoriesInUpdate : StringSetKey("excludedCategoriesInUpdate", emptySet())
