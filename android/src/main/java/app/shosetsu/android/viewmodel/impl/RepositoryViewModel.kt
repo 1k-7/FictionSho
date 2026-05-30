@@ -1,6 +1,13 @@
 package app.shosetsu.android.viewmodel.impl
 
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.lifecycle.viewModelScope
+import app.shosetsu.android.R
+import app.shosetsu.android.common.OfflineException
 import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.utils.share.toURL
+import app.shosetsu.android.datasource.local.memory.base.ICache
 import app.shosetsu.android.domain.usecases.AddRepositoryUseCase
 import app.shosetsu.android.domain.usecases.ForceInsertRepositoryUseCase
 import app.shosetsu.android.domain.usecases.IsOnlineUseCase
@@ -8,17 +15,23 @@ import app.shosetsu.android.domain.usecases.StartRepositoryUpdateManagerUseCase
 import app.shosetsu.android.domain.usecases.delete.DeleteRepositoryUseCase
 import app.shosetsu.android.domain.usecases.load.LoadRepositoriesUseCase
 import app.shosetsu.android.domain.usecases.update.UpdateRepositoryUseCase
+import app.shosetsu.android.view.uimodels.model.QRCodeData
 import app.shosetsu.android.view.uimodels.model.RepositoryUI
 import app.shosetsu.android.viewmodel.abstracted.ARepositoryViewModel
+import app.shosetsu.lib.share.RepositoryLink
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import qrcode.QRCode
+import kotlin.time.Duration.Companion.minutes
 
 /*
  * This file is part of Shosetsu.
@@ -48,31 +61,30 @@ class RepositoryViewModel(
 	private val updateRepositoryUseCase: UpdateRepositoryUseCase,
 	private val startRepositoryUpdateManagerUseCase: StartRepositoryUpdateManagerUseCase,
 	private val forceInsertRepositoryUseCase: ForceInsertRepositoryUseCase,
-	private val isOnlineUseCase: IsOnlineUseCase
+	isOnlineUseCase: IsOnlineUseCase,
+	cacheFactory: ICache.Factory,
 ) : ARepositoryViewModel() {
 
 	override val liveData: StateFlow<ImmutableList<RepositoryUI>> by lazy {
 		loadRepositoriesUseCase().map { it.toImmutableList() }
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, persistentListOf())
 	}
+	override val error = MutableSharedFlow<Throwable>()
 	override val isAddDialogVisible = MutableStateFlow(false)
-	override val addState = MutableStateFlow<AddRepoState>(AddRepoState.Unknown)
-	override val removeState = MutableStateFlow<RemoveRepoState>(RemoveRepoState.Unknown)
+	override val addState = MutableSharedFlow<AddRepoState>()
+	override val removeState = MutableSharedFlow<RemoveRepoState>()
 	override val toggleIsEnabledState =
-		MutableStateFlow<ToggleRepoIsEnabledState>(ToggleRepoIsEnabledState.Unknown)
+		MutableSharedFlow<ToggleRepoIsEnabledState>()
 	override val undoRemoveState =
-		MutableStateFlow<UndoRepoRemoveState>(UndoRepoRemoveState.Unknown)
+		MutableSharedFlow<UndoRepoRemoveState>()
 
 	override fun addRepository(name: String, url: String) {
 		launchIO {
 			try {
 				addRepositoryUseCase(url = url, name = name)
-				addState.value = AddRepoState.Success
+				addState.emit(AddRepoState.Success)
 			} catch (e: Exception) {
-				addState.value = AddRepoState.Failure(e, name, url)
-			} finally {
-				delay(100)
-				addState.value = AddRepoState.Unknown
+				addState.emit(AddRepoState.Failure(e, name, url))
 			}
 		}
 	}
@@ -81,12 +93,9 @@ class RepositoryViewModel(
 		launchIO {
 			try {
 				forceInsertRepositoryUseCase(repo)
-				undoRemoveState.value = UndoRepoRemoveState.Success
+				undoRemoveState.emit(UndoRepoRemoveState.Success)
 			} catch (e: Exception) {
-				undoRemoveState.value = UndoRepoRemoveState.Failure(repo, e)
-			} finally {
-				delay(100)
-				undoRemoveState.value = UndoRepoRemoveState.Unknown
+				undoRemoveState.emit(UndoRepoRemoveState.Failure(repo, e))
 			}
 		}
 	}
@@ -99,6 +108,45 @@ class RepositoryViewModel(
 		isAddDialogVisible.value = false
 	}
 
+	private val qrCodeMap = cacheFactory.create<Int, QRCodeData>(1.minutes, maxSize = 20)
+
+	override val currentShare = MutableStateFlow<RepositoryUI?>(null)
+
+	override val qrCode: Flow<QRCodeData?> =
+		currentShare.map { repo ->
+			if (repo != null) {
+				val value = qrCodeMap[repo.id]
+				if (value != null) {
+					value
+				} else {
+					val url = RepositoryLink(
+						repo.name,
+						repo.url
+					).toURL()
+
+					val code = QRCode(url)
+
+					val bytes = code.render().getBytes()
+
+					val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+						.asImageBitmap()
+
+					qrCodeMap[repo.id] = QRCodeData(bitmap, url)
+					qrCodeMap[repo.id]
+				}
+			} else {
+				null
+			}
+		}
+
+	override fun showShare(repositoryUI: RepositoryUI) {
+		currentShare.value = repositoryUI
+	}
+
+	override fun hideShare() {
+		currentShare.value = null
+	}
+
 	override fun isURL(string: String): Boolean {
 		return false
 	}
@@ -107,12 +155,9 @@ class RepositoryViewModel(
 		launchIO {
 			try {
 				deleteRepositoryUseCase(repo)
-				removeState.value = RemoveRepoState.Success(repo)
+				removeState.emit(RemoveRepoState.Success(repo))
 			} catch (e: Exception) {
-				removeState.value = RemoveRepoState.Failure(e, repo)
-			} finally {
-				delay(100)
-				removeState.value = RemoveRepoState.Unknown
+				removeState.emit(RemoveRepoState.Failure(e, repo))
 			}
 		}
 	}
@@ -122,20 +167,23 @@ class RepositoryViewModel(
 			val newState = !repo.isRepoEnabled
 			try {
 				updateRepositoryUseCase(repo.copy(isRepoEnabled = newState))
-				toggleIsEnabledState.value =
-					ToggleRepoIsEnabledState.Success(repo, newState)
+				toggleIsEnabledState.emit(ToggleRepoIsEnabledState.Success(repo, newState))
 			} catch (e: Exception) {
-				toggleIsEnabledState.value = ToggleRepoIsEnabledState.Failure(repo, e)
-			} finally {
-				delay(100)
-				toggleIsEnabledState.value = ToggleRepoIsEnabledState.Unknown
+				toggleIsEnabledState.emit(ToggleRepoIsEnabledState.Failure(repo, e))
 			}
 		}
 	}
 
 	override fun updateRepositories() {
-		startRepositoryUpdateManagerUseCase()
+		viewModelScope.launch {
+			if (isOnline.value) {
+				startRepositoryUpdateManagerUseCase()
+			} else {
+				error.emit(OfflineException(R.string.fragment_repositories_snackbar_offline_no_update))
+			}
+		}
 	}
 
-	override fun isOnline(): Boolean = isOnlineUseCase()
+	private val isOnline: StateFlow<Boolean> = isOnlineUseCase.getFlow()
+		.stateIn(viewModelScopeIO, SharingStarted.Eagerly, false)
 }

@@ -37,8 +37,7 @@ interface IRemoteCatalogueDataSource {
 		ext: IExtension,
 		query: String,
 		data: Map<Int, Any>,
-	): List<Novel.Listing>
-
+	): List<Novel.Info>
 
 	/**
 	 * Loads a listings data from an extension
@@ -48,5 +47,5 @@ interface IRemoteCatalogueDataSource {
 		ext: IExtension,
 		listingIndex: Int,
 		data: Map<Int, Any>,
-	): List<Novel.Listing>
+	): List<Novel.Info>
 }

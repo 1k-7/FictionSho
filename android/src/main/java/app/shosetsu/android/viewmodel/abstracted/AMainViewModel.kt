@@ -1,13 +1,9 @@
 package app.shosetsu.android.viewmodel.abstracted
 
-import app.shosetsu.android.common.enums.AppThemes
-import app.shosetsu.android.common.enums.NavigationStyle
 import app.shosetsu.android.domain.model.local.AppUpdateEntity
-import app.shosetsu.android.domain.repository.base.IBackupRepository
 import app.shosetsu.android.viewmodel.base.IsOnlineCheckViewModel
-import app.shosetsu.android.viewmodel.base.ShosetsuViewModel
+import app.shosetsu.android.viewmodel.base.ShosetsuRootViewModel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /*
@@ -31,18 +27,17 @@ import kotlinx.coroutines.flow.StateFlow
  * shosetsu
  * 20 / 06 / 2020
  */
-abstract class AMainViewModel : ShosetsuViewModel(), IsOnlineCheckViewModel {
-	abstract fun startAppUpdateCheck(): Flow<AppUpdateEntity?>
+abstract class AMainViewModel : ShosetsuRootViewModel(), IsOnlineCheckViewModel {
 
 	/**
-	 * If 0, Bottom
-	 * If 1, Drawer
+	 * App update, if any
 	 */
-	abstract val navigationStyle: StateFlow<NavigationStyle>
+	abstract val appUpdate: StateFlow<AppUpdateEntity?>
 
-	abstract val appThemeLiveData: SharedFlow<AppThemes>
-
-	abstract val requireDoubleBackToExit: StateFlow<Boolean>
+	/**
+	 * Action to take for an update
+	 */
+	abstract val openUpdate: Flow<UserUpdate>
 
 	/**
 	 * The user requests to update the app
@@ -53,32 +48,35 @@ abstract class AMainViewModel : ShosetsuViewModel(), IsOnlineCheckViewModel {
 	 * If stable-utd, will open up up-to-down
 	 * If stable-fdr, will open up f-droid
 	 */
-	abstract fun handleAppUpdate(): Flow<AppUpdateAction?>
+	abstract fun update()
 
-	sealed class AppUpdateAction {
-
-		/**
-		 * Shosetsu is downloading the update itself
-		 */
-		object SelfUpdate : AppUpdateAction()
-
-		/**
-		 * The user has to handle the update
-		 *
-		 * @param pkg preferred application to open with
-		 */
-		data class UserUpdate(
-			val updateURL: String,
-			val pkg: String?
-		) : AppUpdateAction()
-
-	}
-
-	abstract val backupProgressState: StateFlow<IBackupRepository.BackupProgress>
+	/**
+	 * An action the user is prompted with to handle an update
+	 * The user has to handle the update
+	 *
+	 * @param pkg preferred application to open with
+	 * @param updateURL url to open with
+	 */
+	data class UserUpdate(
+		val updateURL: String,
+		val pkg: String?
+	)
 
 	/** If the application should show the show splash screen */
-	abstract suspend fun showIntro(): Boolean
+	abstract val showIntro: StateFlow<Boolean>
 
-	/** Toggle the state if show intro or not*/
-	abstract fun toggleShowIntro()
+	/**
+	 * Warning in regards to Google locking down the Android ecosystem.
+	 */
+	abstract val showVerificationWarning: StateFlow<Boolean>
+
+	/**
+	 * Dismiss the update dialog
+	 */
+	abstract fun dismissUpdateDialog()
+
+	/**
+	 * Dismiss the verification warning dialog.
+	 */
+	abstract fun dismissVerificationWarning()
 }

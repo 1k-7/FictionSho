@@ -1,6 +1,7 @@
 package app.shosetsu.android.common.utils.share
 
 import app.shosetsu.lib.share.NovelLink
+import app.shosetsu.lib.share.RepositoryLink
 import java.net.URLEncoder
 
 /*
@@ -22,7 +23,7 @@ import java.net.URLEncoder
  * @since 06 / 03 / 2022
  * @author Doomsdayrs
  */
-val BASE_SHARE_URL: String = "https://share.shosetsu.app"
+const val BASE_SHARE_URL: String = "https://share.shosetsu.app"
 
 fun String.urlEncode(): String {
 	@Suppress("CheckedExceptionsKotlin") // utf-8 likely wont be deprecated
@@ -31,11 +32,16 @@ fun String.urlEncode(): String {
 
 fun NovelLink.toURL(): String =
 	"$BASE_SHARE_URL/novel" +
-			"?name=${name.urlEncode()}" +
-			"&url=${url.urlEncode()}" +
-			"&imageURL=${imageURL.urlEncode()}" +
-			"&extID=${extensionQRCode.id}" +
-			"&extURL=${extensionQRCode.imageURL.urlEncode()}" +
-			"&extName=${extensionQRCode.name.urlEncode()}" +
-			"&repoName=${extensionQRCode.repo.name.urlEncode()}" +
-			"&repoURL=${extensionQRCode.repo.url.urlEncode()}"
+		"?name=${name.urlEncode()}" +
+		"&url=${url.urlEncode()}" +
+		"&imageURL=${imageURL.urlEncode()}" +
+		"&extID=${extensionQRCode.id}" +
+		"&extURL=${extensionQRCode.imageURL.urlEncode()}" +
+		"&extName=${extensionQRCode.name.urlEncode()}" +
+		"&repoName=${extensionQRCode.repo.name.urlEncode()}" +
+		"&repoURL=${extensionQRCode.repo.url.urlEncode()}"
+
+fun RepositoryLink.toURL(): String =
+	"$BASE_SHARE_URL/repository" +
+		"?name=${name.urlEncode()}" +
+		"&url=${url.urlEncode()}"

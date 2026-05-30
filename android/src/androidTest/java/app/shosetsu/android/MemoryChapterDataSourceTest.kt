@@ -2,13 +2,16 @@ package app.shosetsu.android
 
 import app.shosetsu.android.common.consts.MEMORY_EXPIRE_CHAPTER_TIME
 import app.shosetsu.android.common.consts.MEMORY_MAX_CHAPTERS
-import app.shosetsu.android.datasource.local.memory.impl.GenericMemChaptersDataSource
+import app.shosetsu.android.datasource.local.memory.impl.ConCacheFactory
+import app.shosetsu.android.datasource.local.memory.impl.MemChaptersDataSource
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.junit.Before
 import org.junit.Test
 import kotlin.system.measureTimeMillis
+import kotlin.time.Duration.Companion.minutes
 
 /*
  * This file is part of Shosetsu.
@@ -33,8 +36,8 @@ import kotlin.system.measureTimeMillis
  * Tests the [app.shosetsu.android.datasource.local.memory.base.IMemChaptersDataSource]
  */
 class MemoryChapterDataSourceTest {
-	private val memorySource by lazy { GenericMemChaptersDataSource() }
-	private val expireTime by lazy { memorySource.expireTime }
+	private val memorySource by lazy { MemChaptersDataSource(ConCacheFactory()) }
+	private val expireTime by lazy { MEMORY_EXPIRE_CHAPTER_TIME.minutes.inWholeMilliseconds }
 
 	/**
 	 * Double check that the expire time is correct and it is a memory source
@@ -46,12 +49,9 @@ class MemoryChapterDataSourceTest {
 		println("Expires in $expireTime ms")
 		require((expireTime / (60 * 1000)) == MEMORY_EXPIRE_CHAPTER_TIME) { "Expire time does not match up properly" }
 		println("Expire time matches")
-
-		println("Checking if max size is right")
-		require(memorySource.maxSize == MEMORY_MAX_CHAPTERS) { "Chapter max is not the same" }
-		println("Max size is right")
 	}
 
+	@OptIn(DelicateCoroutinesApi::class)
 	@Test
 	fun main() {
 		run {

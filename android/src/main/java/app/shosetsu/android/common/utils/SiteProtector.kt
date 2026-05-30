@@ -17,6 +17,8 @@
 package app.shosetsu.android.common.utils
 
 import app.shosetsu.android.common.SettingKey
+import app.shosetsu.android.common.utils.SiteProtector.requestDelay
+import app.shosetsu.android.common.utils.SiteProtector.retryAfter
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -88,7 +90,7 @@ object SiteProtector {
 					// This ensures that two awaits never occur at the same time
 					delay(
 						(getDelay(host) / Random.nextInt(1, 10)) +
-								delayedCount * 100
+							delayedCount * 100
 					)
 					if (delayedCount < 10) delayedCount++
 

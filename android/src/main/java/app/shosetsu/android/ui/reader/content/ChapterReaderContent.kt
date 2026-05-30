@@ -3,18 +3,36 @@ package app.shosetsu.android.ui.reader.content
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetScaffoldState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.R
-import app.shosetsu.android.view.compose.ShosetsuCompose
+import app.shosetsu.android.common.enums.AppThemes
+import app.shosetsu.android.ui.theme.ShosetsuTheme
+import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.android.view.uimodels.model.NovelReaderSettingUI
+import app.shosetsu.android.view.uimodels.model.reader.TTSPlayback
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 /*
@@ -40,85 +58,103 @@ import kotlinx.coroutines.launch
  * @since 26 / 05 / 2022
  * @author Doomsdayrs
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
-fun PreviewChapterReaderContent() {
-	ShosetsuCompose {
-		ChapterReaderContent(
-			isFirstFocusProvider = { false },
-			onFirstFocus = {},
-			isFocused = false,
-			content = {
-				ChapterReaderPagerContent(
-					items = persistentListOf(),
-					isHorizontal = false,
-					onStopTTS = {},
-					markChapterAsCurrent = {},
-					onChapterRead = {},
-					currentPage = 0,
-					onPageChanged = {},
-					isSwipeInverted = false,
-					paddingValues = PaddingValues(),
-					createPage = {
-					}
-				)
-			},
-			sheetContent = {
-				ChapterReaderBottomSheetContent(
-					scaffoldState = it,
-					isTTSCapable = false,
-					isTTSPlaying = false,
-					isBookmarked = false,
-					isRotationLocked = false,
-					setting = NovelReaderSettingUI(-1, 0, 0f),
-					toggleRotationLock = {},
-					toggleBookmark = {},
-					exit = {},
-					onPlayTTS = {},
-					onStopTTS = {},
-					updateSetting = {},
-					lowerSheet = {},
-					toggleFocus = {}
-				) {}
-			}
-		)
-	}
+fun PreviewChapterReaderContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	ChapterReaderContent(
+		isFirstFocusProvider = { false },
+		onFirstFocus = {},
+		isFocused = false,
+		content = { windowPadding, footerPadding ->
+			ChapterReaderPager(
+				items = persistentListOf(),
+				isHorizontal = false,
+				onStopTTS = {},
+				markChapterAsCurrent = {},
+				onChapterRead = {},
+				currentPage = 0,
+				onPageChanged = {},
+				isSwipeInverted = false,
+				pageJumper = StableHolder(MutableSharedFlow()),
+				createPage = {
+				}
+			)
+		},
+		sheetContent = {
+			ChapterReaderBottomSheetContent(
+				scaffoldState = it,
+				ttsPlayback = TTSPlayback.Stopped,
+				isBookmarked = false,
+				isRotationLocked = false,
+				setting = NovelReaderSettingUI(-1, 0, 0f),
+				toggleRotationLock = {},
+				toggleBookmark = {},
+				exit = {},
+				onPlayTTS = {},
+				onPauseTTS = {},
+				onStopTTS = {},
+				updateSetting = {},
+				lowerSheet = {},
+				toggleFocus = {}
+			) {}
+		},
+		exception = null
+	)
 }
 
 /**
  * Main reader content
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChapterReaderContent(
 	isFocused: Boolean,
 	isFirstFocusProvider: () -> Boolean,
 
 	onFirstFocus: () -> Unit,
-	content: @Composable (PaddingValues) -> Unit,
-	sheetContent: @Composable ColumnScope.(BottomSheetScaffoldState) -> Unit
+	content: @Composable (windowPadding: PaddingValues, footerPadding: PaddingValues) -> Unit,
+	sheetContent: @Composable ColumnScope.(BottomSheetScaffoldState) -> Unit,
+	exception: String?
 ) {
 	val scope = rememberCoroutineScope()
 	val scaffoldState = rememberBottomSheetScaffoldState()
 
-	BackHandler(scaffoldState.bottomSheetState.isExpanded) {
+	BackHandler(
+		scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
+	) {
 		scope.launch {
-			scaffoldState.bottomSheetState.collapse()
+			scaffoldState.bottomSheetState.partialExpand()
 		}
 	}
 
+	val insets = WindowInsets.safeDrawing.asPaddingValues()
 	BottomSheetScaffold(
 		scaffoldState = scaffoldState,
 		sheetContent = {
 			sheetContent(scaffoldState)
 		},
-		sheetPeekHeight = if (!isFocused) BottomSheetScaffoldDefaults.SheetPeekHeight else 0.dp,
+		sheetPeekHeight = if (isFocused) 0.dp else insets.calculateBottomPadding() + BottomSheetDefaults.SheetPeekHeight,
 		content = { paddingValues ->
-			content(paddingValues)
+			content(WindowInsets.safeDrawing.asPaddingValues(), paddingValues)
 		},
-		sheetShape = RectangleShape
+		sheetShape = RectangleShape,
+		sheetDragHandle = null,
+		snackbarHost = {
+			SnackbarHost(
+				it,
+				modifier = Modifier.windowInsetsPadding(
+					WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+				)
+			)
+		}
 	)
+
+	LaunchedEffect(exception) {
+		if (exception != null) {
+			scaffoldState.snackbarHostState.showSnackbar(exception)
+		}
+	}
 
 	if (isFocused && isFirstFocusProvider()) {
 		val string = stringResource(R.string.reader_first_focus)
@@ -132,5 +168,4 @@ fun ChapterReaderContent(
 			}
 		}
 	}
-
 }

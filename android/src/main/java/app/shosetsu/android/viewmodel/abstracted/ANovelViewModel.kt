@@ -1,19 +1,17 @@
 package app.shosetsu.android.viewmodel.abstracted
 
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.graphics.ImageBitmap
 import app.shosetsu.android.common.enums.ReadingStatus
 import app.shosetsu.android.view.uimodels.NovelSettingUI
 import app.shosetsu.android.view.uimodels.model.CategoryUI
 import app.shosetsu.android.view.uimodels.model.ChapterUI
 import app.shosetsu.android.view.uimodels.model.NovelUI
-import app.shosetsu.android.viewmodel.base.IsOnlineCheckViewModel
+import app.shosetsu.android.view.uimodels.model.QRCodeData
 import app.shosetsu.android.viewmodel.base.ShosetsuViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import javax.security.auth.Destroyable
 
 /*
  * This file is part of shosetsu.
@@ -40,9 +38,29 @@ import javax.security.auth.Destroyable
  * @author github.com/doomsdayrs
  */
 abstract class ANovelViewModel
-	: ShosetsuViewModel(), IsOnlineCheckViewModel, Destroyable {
+	: ShosetsuViewModel() {
 
-	abstract val hasSelected: StateFlow<Boolean>
+	/**
+	 * A flow that throws the UI a chapter to open
+	 */
+	abstract val openLastReadResult: SharedFlow<LastOpenResult>
+
+	/**
+	 * Result returned by [openLastReadResult]
+	 */
+	sealed interface LastOpenResult {
+		/**
+		 * User has read all chapters
+		 */
+		data object Complete : LastOpenResult
+
+		/**
+		 * Open the following chapters
+		 */
+		data class Open(val chapterUI: ChapterUI) : LastOpenResult
+	}
+
+	abstract val selectedChaptersState: StateFlow<SelectedChaptersState>
 	abstract fun clearSelection()
 
 	abstract val itemIndex: StateFlow<Int>
@@ -52,13 +70,13 @@ abstract class ANovelViewModel
 
 	abstract val novelLive: StateFlow<NovelUI?>
 	abstract val chaptersLive: StateFlow<ImmutableList<ChapterUI>>
-	abstract val selectedChaptersState: StateFlow<SelectedChaptersState>
 
-	abstract val otherException: StateFlow<Throwable?>
-	abstract val novelException: StateFlow<Throwable?>
-	abstract val chaptersException: StateFlow<Throwable?>
+	/**
+	 * Provides errors
+	 */
+	abstract val error: Flow<Throwable?>
 
-	abstract val novelSettingFlow: SharedFlow<NovelSettingUI?>
+	abstract val novelSettingFlow: StateFlow<NovelSettingUI?>
 
 	abstract val categories: StateFlow<ImmutableList<CategoryUI>>
 	abstract val novelCategories: StateFlow<ImmutableList<Int>>
@@ -87,7 +105,7 @@ abstract class ANovelViewModel
 	/**
 	 * Set the categories of the novel
 	 */
-	abstract fun setNovelCategories(categories: IntArray): Unit
+	abstract fun setNovelCategories(categories: IntArray)
 
 	/**
 	 * Toggles the bookmark of this ui
@@ -122,7 +140,7 @@ abstract class ANovelViewModel
 		val novelURL: String
 	)
 
-	abstract fun getShareInfo(): Flow<NovelShareInfo?>
+	abstract val shareInfo: StateFlow<NovelShareInfo?>
 
 	/**
 	 * Return the chapterURL to utilize in some way
@@ -134,10 +152,10 @@ abstract class ANovelViewModel
 	 *
 	 * @return Next chapter to read uwu
 	 */
-	abstract fun openLastRead(): Flow<ChapterUI?>
+	abstract fun openLastRead()
 
 	/** Refresh media */
-	abstract fun refresh(): Flow<Unit>
+	abstract fun refresh()
 
 	/**
 	 * Is the novel bookmarked?
@@ -164,14 +182,13 @@ abstract class ANovelViewModel
 
 	abstract fun updateNovelSetting(novelSettingUI: NovelSettingUI)
 
-	abstract fun getIfAllowTrueDelete(): Flow<Boolean>
-
-	abstract fun getQRCode(): Flow<ImageBitmap?>
+	abstract val showTrueDelete: StateFlow<Boolean>
 
 	abstract fun bookmarkSelected()
 	abstract fun removeBookmarkFromSelected()
 
 	abstract fun selectAll()
+	abstract fun deselectAll()
 
 	abstract fun invertSelection()
 	abstract fun downloadSelected()
@@ -195,6 +212,41 @@ abstract class ANovelViewModel
 	abstract fun jump(query: String, byTitle: Boolean)
 
 	/**
+	 * Is the QR code currently visible or not
+	 */
+	abstract val isQRCodeVisible: StateFlow<Boolean>
+
+	/**
+	 * The QR code that the novel share is done by
+	 */
+	abstract val qrCode: Flow<QRCodeData?>
+
+	/**
+	 * Show QR code dialog to share
+	 */
+	abstract fun showQRCodeDialog()
+
+	/**
+	 * Hide the QR code dialog
+	 */
+	abstract fun hideQRCodeDialog()
+
+	abstract val isShareMenuVisible: StateFlow<Boolean>
+	abstract fun openShareMenu()
+	abstract fun hideShareMenu()
+
+	abstract val isFilterMenuVisible: StateFlow<Boolean>
+	abstract fun showFilterMenu()
+
+	abstract fun hideFilterMenu()
+
+	abstract val isDownloadDialogVisible: StateFlow<Boolean>
+
+	abstract fun showDownloadDialog()
+
+	abstract fun hideDownloadDialog()
+
+	/**
 	 * @param showRemoveBookmark If any chapters are bookmarked, show the remove bookmark logo
 	 * @param showBookmark If any chapters are not bookmarked, show bookmark
 	 * @param showDelete  If any are downloaded, show delete
@@ -204,6 +256,7 @@ abstract class ANovelViewModel
 	 */
 	@Immutable
 	data class SelectedChaptersState(
+		val count: Int = 0,
 		val showRemoveBookmark: Boolean = false,
 		val showBookmark: Boolean = false,
 		val showDelete: Boolean = false,

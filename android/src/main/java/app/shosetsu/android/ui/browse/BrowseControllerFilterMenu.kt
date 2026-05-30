@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Text
@@ -24,12 +27,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.R
-import app.shosetsu.android.view.compose.ShosetsuCompose
+import app.shosetsu.android.common.enums.AppThemes
+import app.shosetsu.android.ui.theme.ShosetsuTheme
 import app.shosetsu.android.viewmodel.abstracted.ABrowseViewModel
 import app.shosetsu.android.viewmodel.abstracted.ABrowseViewModel.FilteredLanguages
 import app.shosetsu.android.viewmodel.abstracted.ABrowseViewModel.LanguageFilter
@@ -71,15 +74,14 @@ fun BrowseControllerFilterMenu(viewModel: ABrowseViewModel) {
 
 	var hideLanguageFilter by remember { mutableStateOf(false) }
 
-	val searchTerm by viewModel.searchTermLive.collectAsState()
-
 	Column(
 		modifier = Modifier
 			.fillMaxSize()
 			.padding(vertical = 16.dp)
 			.verticalScroll(rememberScrollState())
 	) {
-		BrowseControllerLanguagesFilter(languageList, hideLanguageFilter,
+		BrowseControllerLanguagesFilter(
+			languageList, hideLanguageFilter,
 			setLanguageFilterState = { l, s ->
 				viewModel.setLanguageFiltered(l, s)
 			},
@@ -88,7 +90,7 @@ fun BrowseControllerFilterMenu(viewModel: ABrowseViewModel) {
 			}
 		)
 
-		Divider(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+		HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
 
 		BrowseControllerInstalledFilter(
 			state = showOnlyInstalled,
@@ -142,15 +144,15 @@ fun BrowseControllerLanguagesFilter(
 				checked = hidden,
 			) {
 				if (hidden)
-					Icon(painterResource(R.drawable.expand_more), "")
+					Icon(Icons.Outlined.ExpandMore, "")
 				else
-					Icon(painterResource(R.drawable.expand_less), "")
+					Icon(Icons.Outlined.ExpandLess, "")
 			}
 		}
 
 		AnimatedVisibility(!hidden) {
 			languageList.let { (languages, state) ->
-				Divider(modifier = Modifier.padding(bottom = 8.dp, end = 8.dp, start = 8.dp))
+				HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp, end = 8.dp, start = 8.dp))
 
 				BrowseControllerLanguagesContent(
 					languages = languages,
@@ -166,13 +168,11 @@ fun BrowseControllerLanguagesFilter(
 
 @Preview
 @Composable
-fun PreviewBrowseControllerLanguages() {
-	ShosetsuCompose {
-		BrowseControllerLanguagesContent(
-			languages = listOf("en", "ch", "ru", "fr").map(::LanguageFilter).toImmutableList(),
-			state = persistentMapOf("en" to false, "ch" to false, "ru" to true, "fr" to false),
-			onLanguageChecked = { _, _ -> })
-	}
+fun PreviewBrowseControllerLanguages() = ShosetsuTheme(AppThemes.LIGHT) {
+	BrowseControllerLanguagesContent(
+		languages = listOf("en", "ch", "ru", "fr").map(::LanguageFilter).toImmutableList(),
+		state = persistentMapOf("en" to false, "ch" to false, "ru" to true, "fr" to false),
+		onLanguageChecked = { _, _ -> })
 }
 
 @Composable

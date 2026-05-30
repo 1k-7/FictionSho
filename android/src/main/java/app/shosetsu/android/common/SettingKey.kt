@@ -3,7 +3,6 @@ package app.shosetsu.android.common
 import app.shosetsu.android.common.consts.DEFAULT_USER_AGENT
 import app.shosetsu.android.common.enums.MarkingType
 import app.shosetsu.android.domain.model.local.LibraryFilterState
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /*
@@ -30,6 +29,7 @@ import kotlinx.serialization.json.Json
 
 
 typealias IntKey = SettingKey<Int>
+typealias LongKey = SettingKey<Long>
 typealias BooleanKey = SettingKey<Boolean>
 typealias FloatKey = SettingKey<Float>
 typealias StringKey = SettingKey<String>
@@ -58,6 +58,10 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	 */
 	object FirstTime : BooleanKey("first_time3", true)
 
+	/**
+	 * Show the user the verification warning?
+	 */
+	object ShowVerificationWarning : BooleanKey("show_verification_warning", true)
 
 	/**
 	 * Themes that can be edited by the user
@@ -96,10 +100,6 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object ReaderIsInvertedSwipe : BooleanKey("invertedSwipe", false)
 	object ReadingMarkingType : StringKey("readingMarkingType", MarkingType.ONVIEW.name)
 
-	/**
-	 * Should the application convert string returns from an extension to an Html page
-	 */
-	object ReaderStringToHtml : BooleanKey("convertStringToHtml", false)
 	object ReaderIsFirstFocus : BooleanKey("reader_first_focus", true)
 	object ReaderDoubleTapFocus : BooleanKey("reader_double_tap_focus", false)
 	object ReaderDoubleTapSystem : BooleanKey("reader_double_tap_system", false)
@@ -112,7 +112,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object ReaderHtmlCss : StringKey(
 		"readerHtmlCss",
 		"""
-			
+
 		""".trimIndent()
 	)
 
@@ -185,7 +185,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	// Update options
 	object DownloadNewNovelChapters : BooleanKey("isDownloadOnUpdate", false)
 	object OnlyUpdateOngoingNovels : BooleanKey("onlyUpdateOngoing", false)
-	object UpdateNovelsOnStartup : BooleanKey("updateOnStartup", true)
+	object UpdateNovelsOnStartup : BooleanKey("updateOnStartup", false)
 
 	object IncludeCategoriesInUpdate : StringSetKey("includedCategoriesInUpdate", emptySet())
 	object ExcludedCategoriesInUpdate : StringSetKey("excludedCategoriesInUpdate", emptySet())
@@ -193,7 +193,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object IncludeCategoriesToDownload : StringSetKey("includedCategoriesToDownload", emptySet())
 	object ExcludedCategoriesToDownload : StringSetKey("excludedCategoriesToDownload", emptySet())
 
-	object NovelUpdateCycle : IntKey("updateCycle", 12)
+	object NovelUpdateCycle : IntKey("updateCycle", 0)
 	object NovelUpdateOnLowStorage : BooleanKey("updateLowStorage", true)
 	object NovelUpdateOnLowBattery : BooleanKey("updateLowBattery", true)
 	object NovelUpdateOnMeteredConnection : BooleanKey("updateMetered", true)
@@ -202,6 +202,8 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object UpdateNotificationStyle : BooleanKey("updateNotificationStyle", false)
 	object NovelUpdateShowProgress : BooleanKey("novelUpdateShowProgress", true)
 	object NovelUpdateClassicFinish : BooleanKey("novelUpdateClassicFinish", false)
+	object NovelUpdateDateMDY : BooleanKey("novelUpdateDateMDY", false)
+	object NovelUpdateLastTimestamp : LongKey("novelUpdateLastTimestamp", 0L)
 
 	object RepoUpdateOnLowStorage : BooleanKey("repoUpdateLowStorage", true)
 	object RepoUpdateOnLowBattery : BooleanKey("repoUpdateLowBattery", true)
@@ -222,16 +224,13 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object ChapterColumnsInLandscape : IntKey("columnsInNovelsViewH", 6)
 	object NovelBadgeToast : BooleanKey("novelBadge", true)
 	object SelectedNovelCardType : IntKey("novelCardType", 0)
-	object NavStyle : IntKey("navigationStyle", 0)
+	object NavStyle : BooleanKey("legacy_navigation", false)
 
 	// Backup Options
-	/**
-	 * If true, backup only contains chapters that have been modified, else they are ignored
-	 */
-	object BackupOnlyModifiedChapters : BooleanKey("backup_only_modified", true)
+	object BackupStorageLocation : StringKey("backupStorageLocation", "")
 	object ShouldBackupChapters : BooleanKey("backupChapters", true)
 	object ShouldBackupSettings : BooleanKey("backupSettings", false)
-	object BackupCycle : IntKey("backupCycle", 12)
+	object BackupCycle : IntKey("backupCycle", 0)
 
 	object BackupOnLowStorage : BooleanKey("backupLowStorage", true)
 	object BackupOnLowBattery : BooleanKey("backupLowBattery", true)
@@ -260,6 +259,14 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 
 	object ReaderTrackLongReading : BooleanKey("reader_track_long_reading", true)
 
+	object ReaderVoice : StringKey("reader_voice", "")
+
+	object ReaderEngine : StringKey("reader_engine", "")
+
+	object ReaderLanguage : StringKey("reader_language", "")
+
+	object ReaderNextChapter : BooleanKey("reader_next_chapter", false)
+
 
 	// Advanced settings
 
@@ -268,6 +275,10 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	 * 	allowing diversity to avoid app bans.
 	 */
 	object UserAgent : StringKey("user_agent_2", DEFAULT_USER_AGENT)
+
+
+	object UseProxy : BooleanKey("use_proxy", false)
+	object ProxyHost : StringKey("proxy_host", "")
 
 	/**
 	 * Use a user agent that explicitly states Shosetsu
@@ -295,11 +306,6 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	 * Delay between each request to a site
 	 */
 	object SiteProtectionDelay : IntKey("site_protection_delay", 300)
-
-	/**
-	 * Flag for concurrent memory experimentation
-	 */
-	object ConcurrentMemoryExperiment : BooleanKey("concurrent_memory", false)
 
 	class CustomString(
 		name: String,

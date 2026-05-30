@@ -2,7 +2,11 @@ package app.shosetsu.android.datasource.local.database.base
 
 import android.database.sqlite.SQLiteException
 import androidx.paging.PagingSource
-import app.shosetsu.android.domain.model.local.*
+import app.shosetsu.android.domain.model.local.AnalyticsNovelEntity
+import app.shosetsu.android.domain.model.local.LibraryNovelEntity
+import app.shosetsu.android.domain.model.local.NovelEntity
+import app.shosetsu.android.domain.model.local.StrippedBookmarkedNovelEntity
+import app.shosetsu.android.domain.model.local.StrippedNovelEntity
 import kotlinx.coroutines.flow.Flow
 
 /*
@@ -33,6 +37,9 @@ interface IDBNovelsDataSource {
 	/** Loads a [List] of [NovelEntity]s present */
 	@Throws(SQLiteException::class)
 	fun loadNovels(): List<NovelEntity>
+
+	@Throws(SQLiteException::class)
+	fun loadNovelId(novelURL: String, extensionID: Int): Int?
 
 	/** Load a [List] of [NovelEntity]s that are bookmarked */
 	@Throws(SQLiteException::class)

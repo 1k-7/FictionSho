@@ -1,10 +1,8 @@
 package app.shosetsu.android.backend.workers.onetime
 
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.os.Build.VERSION.SDK_INT
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.Constraints
@@ -16,20 +14,14 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
 import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
-import androidx.work.await
-import app.shosetsu.android.R
-import app.shosetsu.android.backend.receivers.NotificationBroadcastReceiver
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.NotificationCapable
 import app.shosetsu.android.common.SettingKey
-import app.shosetsu.android.common.consts.ACTION_UPDATE_EXTENSION
-import app.shosetsu.android.common.consts.EXTRA_UPDATE_EXTENSION_ID
 import app.shosetsu.android.common.consts.LogConstants
 import app.shosetsu.android.common.consts.Notifications.CHANNEL_REPOSITORY_UPDATE
 import app.shosetsu.android.common.consts.Notifications.ID_REPOSITORY_UPDATE
 import app.shosetsu.android.common.consts.WorkerTags.REPOSITORY_UPDATE_TAG
 import app.shosetsu.android.common.ext.addReportErrorAction
-import app.shosetsu.android.common.ext.getString
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.logI
@@ -38,6 +30,8 @@ import app.shosetsu.android.common.ext.notificationManager
 import app.shosetsu.android.common.ext.removeProgress
 import app.shosetsu.android.common.ext.setNotOngoing
 import app.shosetsu.android.common.ext.setOngoing
+import app.shosetsu.android.common.ext.setSmallIcon
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.domain.model.local.ExtLibEntity
 import app.shosetsu.android.domain.model.local.GenericExtensionEntity
 import app.shosetsu.android.domain.model.local.RepositoryEntity
@@ -204,29 +198,6 @@ class RepositoryUpdateWorker(
 	}
 
 	/**
-	 * TODO move to another worker / stage of this worker
-	 */
-	private fun NotificationCompat.Builder.addUpdate(extensionId: Int) {
-		val intent = Intent(
-			applicationContext,
-			NotificationBroadcastReceiver::class.java
-		).apply {
-			action = ACTION_UPDATE_EXTENSION
-			putExtra(EXTRA_UPDATE_EXTENSION_ID, extensionId)
-		}
-		addAction(
-			R.drawable.update,
-			getString(R.string.update),
-			PendingIntent.getBroadcast(
-				applicationContext,
-				0,
-				intent,
-				if (SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-			)
-		)
-	}
-
-	/**
 	 * Handle updating an extension
 	 */
 	private suspend fun updateExtension(repo: RepositoryEntity, repoExt: RepoExtension) {
@@ -295,6 +266,7 @@ class RepositoryUpdateWorker(
 				val repoIndex = try {
 					extRepoRepo.getRepoData(repo)
 				} catch (e: IllegalArgumentException) {
+					e.printStackTrace()
 					notify(
 						"${e.message}",
 						notificationId = ID_REPOSITORY_UPDATE + 1 + repo.id
@@ -302,6 +274,11 @@ class RepositoryUpdateWorker(
 						removeProgress()
 						setContentTitle("${repo.name} failed to load")
 						setNotOngoing()
+						addReportErrorAction(
+							applicationContext,
+							ID_REPOSITORY_UPDATE + 1 + repo.id,
+							e
+						)
 					}
 					continue
 				} catch (e: IOException) {
@@ -369,7 +346,7 @@ class RepositoryUpdateWorker(
 
 	override val baseNotificationBuilder: NotificationCompat.Builder
 		get() = notificationBuilder(applicationContext, CHANNEL_REPOSITORY_UPDATE)
-			.setSmallIcon(R.drawable.download)
+			.setSmallIcon(Icons.Default.Download)
 			.setContentTitle("Repository Update")
 			.setPriority(NotificationCompat.PRIORITY_DEFAULT)
 			.setOngoing(true)
@@ -405,8 +382,8 @@ class RepositoryUpdateWorker(
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(REPOSITORY_UPDATE_TAG).await()

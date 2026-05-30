@@ -1,47 +1,62 @@
 package app.shosetsu.android.ui.about
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.content.ClipData
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Divider
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavOptions
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.navOptions
 import app.shosetsu.android.BuildConfig
 import app.shosetsu.android.R
-import app.shosetsu.android.common.consts.*
-import app.shosetsu.android.common.enums.TextAsset
-import app.shosetsu.android.common.ext.ComposeView
-import app.shosetsu.android.common.ext.navigateSafely
-import app.shosetsu.android.common.ext.setShosetsuTransition
+import app.shosetsu.android.common.consts.SUB_TEXT_SIZE
+import app.shosetsu.android.common.consts.URL_APP_REPO
+import app.shosetsu.android.common.consts.URL_DISCLAIMER
+import app.shosetsu.android.common.consts.URL_DISCORD
+import app.shosetsu.android.common.consts.URL_EXTENSIONS_REPO
+import app.shosetsu.android.common.consts.URL_KOFI
+import app.shosetsu.android.common.consts.URL_MATRIX
+import app.shosetsu.android.common.consts.URL_PATREON
+import app.shosetsu.android.common.consts.URL_PRIVACY
+import app.shosetsu.android.common.consts.URL_WEBSITE
+import app.shosetsu.android.common.enums.AppThemes
 import app.shosetsu.android.common.ext.viewModelDi
-import app.shosetsu.android.ui.settings.sub.TextAssetReaderFragment.Companion.bundle
-import app.shosetsu.android.view.compose.ShosetsuCompose
-import app.shosetsu.android.view.controller.ShosetsuFragment
+import app.shosetsu.android.domain.model.local.Contributor
+import app.shosetsu.android.ui.theme.ShosetsuTheme
+import app.shosetsu.android.view.compose.NavigateBackButton
+import app.shosetsu.android.view.compose.NovelCardCozyContent
 import app.shosetsu.android.viewmodel.abstracted.AAboutViewModel
+import kotlinx.coroutines.launch
 import org.acra.util.Installation
 
 /*
@@ -67,44 +82,15 @@ import org.acra.util.Installation
  * @since 21 / 10 / 2021
  * @author Doomsdayrs
  */
-class AboutFragment : ShosetsuFragment() {
-
-	override val viewTitleRes: Int = R.string.about
-
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedViewState: Bundle?
-	): View {
-		setViewTitle()
-		return ComposeView {
-			AboutView(
-				onNavigateSafely = { id, bundle, options ->
-					findNavController().navigateSafely(id, bundle, options)
-				}
-			)
-		}
-
-	}
-}
 
 @Composable
 fun AboutView(
-	onNavigateSafely: (Int, Bundle, NavOptions) -> Unit
+	onOpenLicense: () -> Unit,
+	onBack: () -> Unit
 ) {
 	val viewModel: AAboutViewModel = viewModelDi()
-	val uriHandler = LocalUriHandler.current
 
-	fun onClickLicense() {
-		onNavigateSafely(
-			R.id.action_aboutController_to_textAssetReader,
-			TextAsset.LICENSE.bundle,
-			navOptions {
-				launchSingleTop = true
-				setShosetsuTransition()
-			}
-		)
-	}
+	val uriHandler = LocalUriHandler.current
 
 	fun onClickDisclaimer() {
 		uriHandler.openUri(URL_DISCLAIMER)
@@ -114,7 +100,7 @@ fun AboutView(
 		uriHandler.openUri(URL_WEBSITE)
 
 	fun openExtensions() =
-		uriHandler.openUri(URL_GITHUB_EXTENSIONS)
+		uriHandler.openUri(URL_EXTENSIONS_REPO)
 
 	fun openDiscord() =
 		uriHandler.openUri(URL_DISCORD)
@@ -126,50 +112,79 @@ fun AboutView(
 		uriHandler.openUri(URL_PATREON)
 
 	fun openGithub() =
-		uriHandler.openUri(URL_GITHUB_APP)
+		uriHandler.openUri(URL_APP_REPO)
 
 	fun openPrivacy() =
 		uriHandler.openUri(URL_PRIVACY)
 
-	ShosetsuCompose {
-		AboutContent(
-			currentVersion = BuildConfig.VERSION_NAME,
-			onCheckForAppUpdate = viewModel::appUpdateCheck,
-			onOpenWebsite = ::openWebsite,
-			onOpenSource = ::openGithub,
-			onOpenExtensions = ::openExtensions,
-			onOpenDiscord = ::openDiscord,
-			onOpenPatreon = ::openPatreon,
-			onOpenLicense = ::onClickLicense,
-			onOpenDisclaimer = ::onClickDisclaimer,
-			onOpenMatrix = ::openMatrix,
-			onOpenPrivacy = ::openPrivacy,
-			onOpenKofi = {
-				uriHandler.openUri(URL_KOFI)
-			}
-		)
-	}
+	AboutContent(
+		currentVersion = BuildConfig.VERSION_NAME,
+		onCheckForAppUpdate = viewModel::appUpdateCheck,
+		onOpenWebsite = ::openWebsite,
+		onOpenSource = ::openGithub,
+		onOpenExtensions = ::openExtensions,
+		onOpenDiscord = ::openDiscord,
+		onOpenPatreon = ::openPatreon,
+		onOpenLicense = onOpenLicense,
+		onOpenDisclaimer = ::onClickDisclaimer,
+		onOpenMatrix = ::openMatrix,
+		onOpenPrivacy = ::openPrivacy,
+		onOpenKofi = {
+			uriHandler.openUri(URL_KOFI)
+		},
+		onBack = onBack,
+		contributors = viewModel.contributors
+	)
 }
 
 @ExperimentalMaterial3Api
 @Preview
 @Composable
-fun PreviewAboutContent() {
-	ShosetsuCompose {
-		AboutContent(
-			currentVersion = BuildConfig.VERSION_NAME,
-			onCheckForAppUpdate = {},
-			onOpenWebsite = {},
-			onOpenSource = {},
-			onOpenExtensions = {},
-			onOpenDiscord = {},
-			onOpenPatreon = {},
-			onOpenLicense = {},
-			onOpenDisclaimer = {},
-			onOpenMatrix = {},
-			onOpenPrivacy = {},
-			onOpenKofi = {
-			}
+fun PreviewAboutContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	AboutContent(
+		currentVersion = BuildConfig.VERSION_NAME,
+		onCheckForAppUpdate = {},
+		onOpenWebsite = {},
+		onOpenSource = {},
+		onOpenExtensions = {},
+		onOpenDiscord = {},
+		onOpenPatreon = {},
+		onOpenLicense = {},
+		onOpenDisclaimer = {},
+		onOpenMatrix = {},
+		onOpenPrivacy = {},
+		onOpenKofi = {
+		},
+		onBack = {},
+		contributors = listOf(
+			Contributor(
+				"Clocks",
+				"doomsdayrs.page",
+				0,
+				null,
+				null,
+			)
+		)
+	)
+
+}
+
+@Composable
+fun ContributorItem(
+	contributor: Contributor
+) {
+	val uriHandler = LocalUriHandler.current
+
+	Box(Modifier.requiredWidthIn(max = 60.dp)) {
+		// TODO, Maybe a custom contributor image shape would be nice.
+		NovelCardCozyContent(
+			contributor.name,
+			contributor.image ?: "",
+			onClick = {
+				if (!contributor.website.isNullOrBlank())
+					uriHandler.openUri(contributor.website)
+			},
+			onLongClick = {},
 		)
 	}
 }
@@ -230,108 +245,145 @@ fun AboutContent(
 	onOpenLicense: () -> Unit,
 	onOpenDisclaimer: () -> Unit,
 	onOpenMatrix: () -> Unit,
-	onOpenPrivacy: () -> Unit
+	onOpenPrivacy: () -> Unit,
+	onBack: () -> Unit,
+	contributors: List<Contributor>
 ) {
-	LazyColumn(
-		modifier = Modifier.fillMaxSize(),
-		contentPadding = PaddingValues(bottom = 128.dp)
-	) {
-		item {
-			AboutItem(
-				R.string.version,
-				description = currentVersion
-			)
-		}
-		item {
-			AboutItem(
-				R.string.check_for_app_update,
-				onClick = onCheckForAppUpdate
-			)
-		}
-		item {
-			val context = LocalContext.current
-			val clipboard = LocalClipboardManager.current
-
-			val id = remember { Installation.id(context) }
-
-			AboutItem(
-				R.string.fragment_about_acra_id,
-				description = id,
-				onClick = {
-					clipboard.setText(AnnotatedString(id))
+	Scaffold(
+		topBar = {
+			TopAppBar(
+				title = {
+					Text(stringResource(R.string.about))
+				},
+				navigationIcon = {
+					NavigateBackButton(onBack)
 				}
 			)
 		}
-		item {
-			Divider()
-		}
-		item {
-			AboutItem(
-				R.string.website,
-				URL_WEBSITE,
-				onClick = onOpenWebsite
-			)
-		}
-		item {
-			AboutItem(
-				R.string.github,
-				URL_GITHUB_APP,
-				onClick = onOpenSource
-			)
-		}
-		item {
-			AboutItem(
-				R.string.extensions,
-				URL_GITHUB_EXTENSIONS,
-				onClick = onOpenExtensions
-			)
-		}
-		item {
-			AboutItem(
-				R.string.matrix,
-				URL_MATRIX,
-				onClick = onOpenMatrix
-			)
-		}
-		item {
-			AboutItem(
-				R.string.discord,
-				URL_DISCORD,
-				onClick = onOpenDiscord
-			)
-		}
-		item {
-			AboutItem(
-				R.string.patreon_support,
-				URL_PATREON,
-				onClick = onOpenPatreon
-			)
-		}
-		item {
-			AboutItem(
-				R.string.kofi_support,
-				URL_KOFI,
-				onClick = onOpenKofi
-			)
-		}
-		item {
-			AboutItem(
-				R.string.source_licenses,
-				onClick = onOpenLicense
-			)
-		}
-		item {
-			AboutItem(
-				R.string.disclaimer,
-				URL_DISCLAIMER,
-				onClick = onOpenDisclaimer
-			)
-		}
-		item {
-			AboutItem(
-				R.string.privacy_policy,
-				onClick = onOpenPrivacy
-			)
+	) { paddingValues ->
+		LazyColumn(
+			modifier = Modifier
+				.fillMaxSize()
+				.padding(paddingValues),
+			contentPadding = PaddingValues(bottom = 128.dp)
+		) {
+			item {
+				AboutItem(
+					R.string.version,
+					description = currentVersion
+				)
+			}
+			item {
+				AboutItem(
+					R.string.check_for_app_update,
+					onClick = onCheckForAppUpdate
+				)
+			}
+			item {
+				val context = LocalContext.current
+				val clipboard = LocalClipboard.current
+				val scope = rememberCoroutineScope()
+
+				val id = remember { Installation.id(context) }
+
+				AboutItem(
+					R.string.fragment_about_acra_id,
+					description = id,
+					onClick = {
+						scope.launch { clipboard.setClipEntry(ClipData.newPlainText("text", id).toClipEntry()) }
+					}
+				)
+			}
+			item {
+				HorizontalDivider()
+			}
+
+			item {
+				Text(stringResource(R.string.contributors), Modifier.padding(start = 16.dp, top = 8.dp))
+			}
+
+			item {
+				LazyRow(
+					contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+					horizontalArrangement = Arrangement.spacedBy(4.dp)
+				) {
+					items(contributors) {
+						ContributorItem(it)
+					}
+				}
+			}
+
+			item {
+				HorizontalDivider()
+			}
+			item {
+				AboutItem(
+					R.string.website,
+					URL_WEBSITE,
+					onClick = onOpenWebsite
+				)
+			}
+			item {
+				AboutItem(
+					R.string.github,
+					URL_APP_REPO,
+					onClick = onOpenSource
+				)
+			}
+			item {
+				AboutItem(
+					R.string.extensions,
+					URL_EXTENSIONS_REPO,
+					onClick = onOpenExtensions
+				)
+			}
+			item {
+				AboutItem(
+					R.string.matrix,
+					URL_MATRIX,
+					onClick = onOpenMatrix
+				)
+			}
+			item {
+				AboutItem(
+					R.string.discord,
+					URL_DISCORD,
+					onClick = onOpenDiscord
+				)
+			}
+			item {
+				AboutItem(
+					R.string.patreon_support,
+					URL_PATREON,
+					onClick = onOpenPatreon
+				)
+			}
+			item {
+				AboutItem(
+					R.string.kofi_support,
+					URL_KOFI,
+					onClick = onOpenKofi
+				)
+			}
+			item {
+				AboutItem(
+					R.string.source_licenses,
+					onClick = onOpenLicense
+				)
+			}
+			item {
+				AboutItem(
+					R.string.disclaimer,
+					URL_DISCLAIMER,
+					onClick = onOpenDisclaimer
+				)
+			}
+			item {
+				AboutItem(
+					R.string.privacy_policy,
+					onClick = onOpenPrivacy
+				)
+			}
 		}
 	}
 }

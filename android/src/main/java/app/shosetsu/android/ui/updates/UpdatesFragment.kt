@@ -1,12 +1,8 @@
 package app.shosetsu.android.ui.updates
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,54 +15,67 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.MenuProvider
 import app.shosetsu.android.R
-import app.shosetsu.android.common.ext.ComposeView
-import app.shosetsu.android.common.ext.displayOfflineSnackBar
-import app.shosetsu.android.common.ext.openChapter
+import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.enums.ReadingStatus
 import app.shosetsu.android.common.ext.trimDate
-import app.shosetsu.android.common.ext.viewModel
 import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.view.compose.ErrorAction
 import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.ImageLoadingError
-import app.shosetsu.android.view.compose.ShosetsuCompose
+import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.compose.coverRatio
+import app.shosetsu.android.view.compose.placeholder
+import app.shosetsu.android.view.compose.relativeTimeSpanString
 import app.shosetsu.android.view.compose.rememberFakePullRefreshState
-import app.shosetsu.android.view.controller.ShosetsuFragment
-import app.shosetsu.android.view.controller.base.HomeFragment
 import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.android.view.uimodels.model.UpdatesUI
 import app.shosetsu.android.viewmodel.abstracted.AUpdatesViewModel
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import com.google.accompanist.placeholder.material.placeholder
-import com.google.android.material.datepicker.MaterialDatePicker
 import kotlinx.collections.immutable.ImmutableMap
 import org.joda.time.DateTime
 
@@ -93,136 +102,243 @@ import org.joda.time.DateTime
  * @since 09 / 10 / 2021
  * @author Doomsdayrs
  */
-class UpdatesFragment : ShosetsuFragment(), HomeFragment, MenuProvider {
-	override val viewTitleRes: Int = R.string.updates
+@Composable
+fun UpdatesView(
+	openNovel: (Int) -> Unit,
+	openChapter: (novelId: Int, chapterId: Int) -> Unit,
+	drawerIcon: @Composable () -> Unit,
+) {
+	val viewModel = viewModelDi<AUpdatesViewModel>()
+	val items by viewModel.liveData.collectAsState()
+	val error by viewModel.error.collectAsState(null)
+	val isClearBeforeVisible by viewModel.isClearBeforeVisible.collectAsState()
+	val displayDateAsMDY by viewModel.displayDateAsMDYFlow.collectAsState()
+	val lastUpdated by viewModel.lastUpdated.collectAsState()
 
-	private val viewModel: AUpdatesViewModel by viewModel()
+	val context = LocalContext.current
+	val hostState = remember { SnackbarHostState() }
 
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedViewState: Bundle?
-	): View {
-		activity?.addMenuProvider(this, viewLifecycleOwner)
-		setViewTitle()
-		return ComposeView {
-			UpdatesView(
-				viewModel,
-				openChapter = {
-					activity?.openChapter(it.chapterID, it.novelID)
-				},
-				offlineMessage = {
-					displayOfflineSnackBar(R.string.generic_error_cannot_update_library_offline)
+	LaunchedEffect(error) {
+		when (error) {
+			is OfflineException -> {
+				val result = hostState.showSnackbar(
+					context.getString((error as OfflineException).messageRes),
+					duration = SnackbarDuration.Long,
+					actionLabel = context.getString(R.string.generic_wifi_settings)
+				)
+				if (result == SnackbarResult.ActionPerformed) {
+					context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
 				}
-			)
+			}
 		}
 	}
 
-	private fun onUserClearBefore() {
-		MaterialDatePicker.Builder.datePicker()
-			.setTitleText(R.string.fragment_updates_clear)
-			.build()
-			.apply {
-				addOnPositiveButtonClickListener {
-					viewModel.clearBefore(it)
-				}
-			}
-			.show(childFragmentManager, tag)
+	UpdatesContent(
+		items = items,
+		lastUpdated = lastUpdated,
+		onRefresh = {
+			viewModel.startUpdateManager(-1)
+		},
+		openNovel = {
+			openNovel(it.novelID)
+		},
+		openChapter = {
+			openChapter(it.novelID, it.chapterID)
+		},
+		onClearAll = viewModel::clearAll,
+		onClearBefore = viewModel::showClearBefore,
+		hostState = hostState,
+		drawerIcon = drawerIcon,
+		displayDateAsMDY = displayDateAsMDY
+	)
+
+	if (isClearBeforeVisible) {
+		ClearBeforeDialog(
+			onHideClearBefore = viewModel::hideClearBefore,
+			onClearBefore = viewModel::clearBefore
+		)
 	}
-
-	override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-		menuInflater.inflate(R.menu.toolbar_updates, menu)
-	}
-
-	override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
-		when (menuItem.itemId) {
-			R.id.fragment_updates_clear_all -> {
-				viewModel.clearAll()
-				true
-			}
-
-			R.id.fragment_updates_clear_before -> {
-				onUserClearBefore()
-				true
-			}
-
-			else -> false
-		}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdatesView(
-	viewModel: AUpdatesViewModel = viewModelDi(),
-	openChapter: (UpdatesUI) -> Unit,
-	offlineMessage: () -> Unit
+fun ClearBeforeDialog(
+	onHideClearBefore: () -> Unit,
+	onClearBefore: (Long) -> Unit
 ) {
-	ShosetsuCompose {
-		val items by viewModel.liveData.collectAsState()
-		val isOnline by viewModel.isOnlineFlow.collectAsState()
+	val datePickerState = rememberDatePickerState()
 
-		Scaffold {
-			UpdatesContent(
-				items = items,
-				onRefresh = {
-					if (isOnline)
-						viewModel.startUpdateManager(-1)
-					else offlineMessage()
+	DatePickerDialog(
+		onDismissRequest = onHideClearBefore,
+		confirmButton = {
+			TextButton(
+				onClick = {
+					if (datePickerState.selectedDateMillis != null)
+						onClearBefore(datePickerState.selectedDateMillis!!)
+					onHideClearBefore()
 				},
-				openChapter,
-				modifier = Modifier.padding(it)
-			)
-		}
-
+				enabled = datePickerState.selectedDateMillis != null
+			) {
+				Text(stringResource(android.R.string.ok))
+			}
+		},
+		dismissButton = {
+			TextButton(
+				onClick = onHideClearBefore
+			) {
+				Text(stringResource(android.R.string.cancel))
+			}
+		},
+	) {
+		DatePicker(
+			datePickerState,
+			title = {
+				Text(stringResource(R.string.fragment_updates_clear))
+			}
+		)
 	}
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UpdatesAppBar(
+	onClearAll: () -> Unit,
+	onClearBefore: () -> Unit,
+	isEmpty: Boolean,
+	drawerIcon: @Composable () -> Unit
+) {
+	TopAppBar(
+		title = {
+			Text(stringResource(R.string.updates))
+		},
+		actions = {
+			AnimatedVisibility(!isEmpty) {
+				Box {
+					var showDropwDown by remember { mutableStateOf(false) }
+					SimpleIconButton(
+						Icons.Default.DeleteSweep, stringResource(R.string.clear),
+						onClick = {
+							showDropwDown = !showDropwDown
+						}
+					)
+
+					DropdownMenu(
+						showDropwDown,
+						onDismissRequest = {
+							showDropwDown = false
+						}
+					) {
+						DropdownMenuItem(
+							text = {
+								Text(stringResource(R.string.all))
+							},
+							onClick = onClearAll
+						)
+						DropdownMenuItem(
+							text = {
+								Text(stringResource(R.string.before))
+							},
+							onClick = onClearBefore
+						)
+					}
+				}
+			}
+		},
+		scrollBehavior = enterAlwaysScrollBehavior(),
+		navigationIcon = drawerIcon
+	)
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun UpdatesContent(
 	items: ImmutableMap<DateTime, List<UpdatesUI>>,
+	lastUpdated: Long,
 	onRefresh: () -> Unit,
+	openNovel: (UpdatesUI) -> Unit,
 	openChapter: (UpdatesUI) -> Unit,
-	modifier: Modifier = Modifier
+	onClearAll: () -> Unit,
+	onClearBefore: () -> Unit,
+	hostState: SnackbarHostState,
+	drawerIcon: @Composable () -> Unit,
+	displayDateAsMDY: Boolean
 ) {
 	val (isRefreshing, pullRefreshState) = rememberFakePullRefreshState(onRefresh)
-	Box(modifier.pullRefresh(pullRefreshState)) {
-		if (items.isEmpty()) {
-			Column {
+	Scaffold(
+		topBar = {
+			UpdatesAppBar(onClearAll, onClearBefore, items.isEmpty(), drawerIcon)
+		},
+		snackbarHost = {
+			SnackbarHost(hostState)
+		}
+	) { padding ->
+		Box(
+			Modifier
+				.pullRefresh(pullRefreshState)
+				.padding(padding)
+		) {
+			if (items.isEmpty()) {
 				ErrorContent(
 					R.string.empty_updates_message,
 					ErrorAction(R.string.empty_updates_refresh_action) {
 						onRefresh()
 					}
 				)
-			}
-		} else {
-			LazyColumn(
-				contentPadding = PaddingValues(bottom = 112.dp),
-				verticalArrangement = Arrangement.spacedBy(4.dp)
-			) {
-				items.forEach { (header, updateItems) ->
-					stickyHeader {
-						UpdateHeaderItemContent(remember(header) { StableHolder(header) })
-					}
+			} else {
+				LazyColumn(
+					contentPadding = PaddingValues(bottom = 112.dp),
+					verticalArrangement = Arrangement.spacedBy(4.dp)
+				) {
+					updatesLastUpdatedItem(lastUpdated)
 
-					items(updateItems, key = { it.chapterID }) {
-						UpdateItemContent(it) {
-							openChapter(it)
+					items.forEach { (header, updateItems) ->
+						item {
+							UpdateHeaderItemContent(
+								remember(header) { StableHolder(header) },
+								displayDateAsMDY
+							)
+						}
+
+						items(updateItems, key = { it.chapterID }) {
+							UpdateItemContent(
+								it,
+								onCoverClick = { openNovel(it) },
+								onClick = { openChapter(it) }
+							)
 						}
 					}
 				}
 			}
-		}
 
-		PullRefreshIndicator(isRefreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
+			PullRefreshIndicator(
+				isRefreshing,
+				pullRefreshState,
+				Modifier.align(Alignment.TopCenter)
+			)
+		}
+	}
+}
+
+internal fun LazyListScope.updatesLastUpdatedItem(lastUpdated: Long) {
+	item(key = "updates-lastUpdated") {
+		Box(
+			modifier = Modifier
+				.animateItem(fadeInSpec = null, fadeOutSpec = null)
+				.padding(horizontal = 16.dp, vertical = 8.dp),
+		) {
+			Text(
+				text = stringResource(R.string.updates_last_update_info, relativeTimeSpanString(lastUpdated)),
+				fontStyle = FontStyle.Italic,
+				style = MaterialTheme.typography.bodySmall,
+			)
+		}
 	}
 }
 
 @Preview
 @Composable
 fun PreviewUpdateHeaderItemContent() {
-	UpdateHeaderItemContent(StableHolder(DateTime().trimDate()))
+	UpdateHeaderItemContent(StableHolder(DateTime().trimDate()), false)
 }
 
 @ExperimentalMaterial3Api
@@ -235,22 +351,28 @@ fun PreviewUpdateItemContent() {
 			1,
 			System.currentTimeMillis(),
 			"This is a chapter",
+			ReadingStatus.READING,
 			"This is a novel",
-			""
+			"",
 		),
-	) {
-	}
+		{},
+		{}
+	)
 }
 
 
 @Composable
-fun UpdateItemContent(updateUI: UpdatesUI, onClick: () -> Unit) {
+fun UpdateItemContent(
+	updateUI: UpdatesUI,
+	onCoverClick: () -> Unit,
+	onClick: () -> Unit
+) {
 	Row(
 		Modifier
 			.fillMaxWidth()
 			.height(72.dp)
 			.clickable(onClick = onClick)
-			.padding(start = 8.dp, end = 8.dp),
+			.padding(start = 16.dp, end = 8.dp),
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		if (updateUI.novelImageURL.isNotEmpty()) {
@@ -262,10 +384,11 @@ fun UpdateItemContent(updateUI: UpdatesUI, onClick: () -> Unit) {
 				contentDescription = null,
 				contentScale = ContentScale.Crop,
 				modifier = Modifier
-					.clip(MaterialTheme.shapes.medium)
-					.aspectRatio(coverRatio),
+					.aspectRatio(coverRatio)
+					.clip(MaterialTheme.shapes.small)
+					.clickable(onClick = onCoverClick),
 				error = {
-					ImageLoadingError()
+					ImageLoadingError(updateUI.novelName)
 				},
 				loading = {
 					Box(Modifier.placeholder(true))
@@ -273,12 +396,21 @@ fun UpdateItemContent(updateUI: UpdatesUI, onClick: () -> Unit) {
 			)
 		} else {
 			ImageLoadingError(
-				Modifier.aspectRatio(coverRatio)
+				updateUI.novelName,
+				Modifier
+					.aspectRatio(coverRatio)
+					.clip(MaterialTheme.shapes.small)
+					.clickable(onClick = onCoverClick)
 			)
 		}
 		Column(
 			verticalArrangement = Arrangement.Center,
 			modifier = Modifier
+				.let {
+					if (updateUI.readingStatus == ReadingStatus.READ)
+						it.alpha(.5f)
+					else it
+				}
 				.fillMaxWidth()
 				.padding(4.dp),
 		) {
@@ -305,30 +437,27 @@ fun UpdateItemContent(updateUI: UpdatesUI, onClick: () -> Unit) {
 }
 
 @Composable
-fun UpdateHeaderItemContent(dateTime: StableHolder<DateTime>) {
-	Surface(
-		modifier = Modifier.fillMaxWidth(),
-		shadowElevation = 2.dp,
-		tonalElevation = 2.dp
-	) {
-		val context = LocalContext.current
-		val text = remember(dateTime, context) {
-			when (dateTime.item) {
-				DateTime(System.currentTimeMillis()).trimDate() ->
-					context.getString(R.string.today)
+fun UpdateHeaderItemContent(dateTime: StableHolder<DateTime>, displayDateAsMDY: Boolean) {
+	val context = LocalContext.current
+	val text = remember(dateTime, context) {
+		when (dateTime.item) {
+			DateTime(System.currentTimeMillis()).trimDate() ->
+				context.getString(R.string.today)
 
-				DateTime(System.currentTimeMillis()).trimDate().minusDays(1) ->
-					context.getString(R.string.yesterday)
+			DateTime(System.currentTimeMillis()).trimDate().minusDays(1) ->
+				context.getString(R.string.yesterday)
 
-				else -> "${dateTime.item.dayOfMonth}/${dateTime.item.monthOfYear}/${dateTime.item.year}"
-			}
+			else -> if (displayDateAsMDY) "${dateTime.item.monthOfYear}/${dateTime.item.dayOfMonth}/${dateTime.item.year}" else "${dateTime.item.dayOfMonth}/${dateTime.item.monthOfYear}/${dateTime.item.year}"
 		}
-		Text(
-			text,
-			modifier = Modifier
-				.fillMaxWidth()
-				.padding(horizontal = 16.dp, vertical = 8.dp),
-			fontSize = 14.sp
-		)
 	}
+	Text(
+		text,
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(horizontal = 16.dp, vertical = 8.dp),
+//		fontSize = 14.sp
+		color = MaterialTheme.colorScheme.onSurfaceVariant,
+		fontWeight = FontWeight.SemiBold,
+		style = MaterialTheme.typography.bodyMedium,
+	)
 }

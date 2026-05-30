@@ -1,19 +1,19 @@
 package app.shosetsu.android.application
 
-import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.database.sqlite.SQLiteException
+import android.os.Build
+import android.os.Looper
 import android.util.Log
+import android.webkit.WebView
 import android.widget.Toast
-import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.work.Configuration
 import app.shosetsu.android.BuildConfig
 import app.shosetsu.android.R
-import app.shosetsu.android.common.FLAG_CONCURRENT_MEMORY
 import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.consts.Notifications
 import app.shosetsu.android.common.consts.ShortCuts
@@ -21,7 +21,10 @@ import app.shosetsu.android.common.ext.fileOut
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.toast
+import app.shosetsu.android.common.utils.CloudflareInterceptor
+import app.shosetsu.android.common.utils.DeviceUtil
 import app.shosetsu.android.common.utils.SiteProtector
+import app.shosetsu.android.common.utils.webview.WebViewUtil
 import app.shosetsu.android.di.dataSourceModule
 import app.shosetsu.android.di.databaseModule
 import app.shosetsu.android.di.networkModule
@@ -42,8 +45,8 @@ import app.shosetsu.lib.lua.shosetsuGlobals
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
-import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -97,6 +100,7 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 	private val settingsRepo: ISettingsRepository by instance()
 	private val getUserAgent: GetUserAgentUseCase by instance()
 
+	/***/
 	override val di: DI by DI.lazy {
 		bind<ViewModelFactory>() with singleton { ViewModelFactory(applicationContext) }
 		import(othersModule)
@@ -110,6 +114,9 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 		import(androidXModule(this@ShosetsuApplication))
 	}
 
+	/**
+	 * Perform setup as soon as context is available
+	 */
 	override fun attachBaseContext(base: Context?) {
 		super.attachBaseContext(base)
 		Notifications.createChannels(this)
@@ -190,13 +197,11 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 		)
 	}
 
+	/***/
 	override fun onCreate() {
-
 		runBlocking {
 			if (settingsRepo.getBoolean(SettingKey.LogToFile))
 				setupDualOutput()
-
-			FLAG_CONCURRENT_MEMORY = settingsRepo.getBoolean(SettingKey.ConcurrentMemoryExperiment)
 		}
 
 		setupCoreLib()
@@ -215,7 +220,12 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 			}
 		}
 		super.onCreate()
-		DynamicColors.applyToActivitiesIfAvailable(this)
+
+		// Avoid potential crashes
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+			val process = getProcessName()
+			if (packageName != process) WebView.setDataDirectorySuffix(process)
+		}
 	}
 
 	/**
@@ -266,13 +276,20 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 
 	override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {}
 
-	override fun getWorkManagerConfiguration(): Configuration =
+	override val workManagerConfiguration: Configuration =
 		Configuration.Builder().apply {
 		}.build()
 
+	@OptIn(ExperimentalCoroutinesApi::class)
 	override fun newImageLoader(): ImageLoader =
 		ImageLoader.Builder(this).apply {
-			okHttpClient(okHttpClient)
+			okHttpClient(
+				okHttpClient.newBuilder()
+					.apply {
+						interceptors().removeIf { it is CloudflareInterceptor }
+					}
+					.build()
+			)
 			diskCache {
 				DiskCache.Builder().apply {
 					directory(cacheDir.resolve("image_cache"))
@@ -280,11 +297,31 @@ class ShosetsuApplication : Application(), LifecycleEventObserver, DIAware,
 				}.build()
 			}
 
-			allowRgb565(getSystemService<ActivityManager>()!!.isLowRamDevice)
+			DeviceUtil.isLowRamDevice(this@ShosetsuApplication)
 
 			// Coil spawns a new thread for every image load by default
 			fetcherDispatcher(Dispatchers.IO.limitedParallelism(8))
 			decoderDispatcher(Dispatchers.IO.limitedParallelism(2))
 			transformationDispatcher(Dispatchers.IO.limitedParallelism(2))
 		}.build()
+
+
+	override fun getPackageName(): String {
+		// This causes freezes in Android 6/7 for some reason
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			try {
+				// Override the value passed as X-Requested-With in WebView requests
+				val stackTrace = Looper.getMainLooper().thread.stackTrace
+				val isChromiumCall = stackTrace.any { trace ->
+					trace.className.lowercase() in setOf("org.chromium.base.buildinfo", "org.chromium.base.apkinfo") &&
+						trace.methodName.lowercase() in setOf("getall", "getpackagename", "<init>")
+				}
+
+				if (isChromiumCall) return WebViewUtil.spoofedPackageName(applicationContext)
+			} catch (_: Exception) {
+			}
+		}
+
+		return super.getPackageName()
+	}
 }

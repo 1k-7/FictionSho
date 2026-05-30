@@ -6,13 +6,12 @@ import android.os.Build.VERSION_CODES
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
-import androidx.work.ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType.CONNECTED
 import androidx.work.NetworkType.UNMETERED
 import androidx.work.Operation
 import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
-import androidx.work.await
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.onetime.NovelUpdateWorker
 import app.shosetsu.android.common.SettingKey.NovelUpdateCycle
@@ -23,8 +22,8 @@ import app.shosetsu.android.common.SettingKey.NovelUpdateOnlyWhenIdle
 import app.shosetsu.android.common.consts.LogConstants
 import app.shosetsu.android.common.consts.WorkerTags.UPDATE_CYCLE_WORK_ID
 import app.shosetsu.android.common.ext.launchIO
-import app.shosetsu.android.common.ext.logD
 import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import org.kodein.di.instance
 import java.util.concurrent.TimeUnit.HOURS
@@ -52,7 +51,7 @@ import androidx.work.PeriodicWorkRequestBuilder as PWRB
  * 07 / 02 / 2020
  *
  * <p>
- *     Handles update requests for the entire application
+ *	 Handles update requests for the entire application
  * </p>
  */
 class NovelUpdateCycleWorker(
@@ -67,22 +66,32 @@ class NovelUpdateCycleWorker(
 			WorkInfo.State.ENQUEUED -> {
 				logI("NovelUpdater is waiting to update, ignoring")
 			}
+
 			WorkInfo.State.RUNNING -> {
 				logI("NovelUpdater is running, ignoring")
 			}
+
 			WorkInfo.State.SUCCEEDED -> {
 				logI("NovelUpdater has completed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.FAILED -> {
 				logI("Previous NovelUpdater has failed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.BLOCKED -> {
 				logI("Previous NovelUpdater is blocked, ignoring")
 			}
+
 			WorkInfo.State.CANCELLED -> {
 				logI("Previous NovelUpdater was cancelled, starting again")
+				manager.start()
+			}
+
+			null -> {
+				logI("Previous NovelUpdater is null, starting again")
 				manager.start()
 			}
 		}
@@ -123,8 +132,8 @@ class NovelUpdateCycleWorker(
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(UPDATE_CYCLE_WORK_ID).await()
@@ -141,9 +150,13 @@ class NovelUpdateCycleWorker(
 		override fun start(data: Data) {
 			launchIO {
 				logI(LogConstants.SERVICE_NEW)
+				if (updateCycle() == 0L) {
+					logI("Novel update cycle is disabled.")
+					return@launchIO
+				}
 				workerManager.enqueueUniquePeriodicWork(
 					UPDATE_CYCLE_WORK_ID,
-					CANCEL_AND_REENQUEUE,
+					ExistingPeriodicWorkPolicy.UPDATE,
 					PWRB<NovelUpdateCycleWorker>(
 						updateCycle(),
 						HOURS
@@ -162,9 +175,11 @@ class NovelUpdateCycleWorker(
 					)
 						.build()
 				)
-				val info = workerManager.getWorkInfosForUniqueWork(UPDATE_CYCLE_WORK_ID).await()[0]
-				logD("State ${info.state}")
-
+				logI(
+					"NovelUpdateCycleWorker State ${
+						workerManager.getWorkInfosForUniqueWork(UPDATE_CYCLE_WORK_ID).await()[0]
+					}"
+				)
 			}
 		}
 

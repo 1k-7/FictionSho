@@ -1,8 +1,15 @@
 package app.shosetsu.android.ui.reader.page
 
+import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import app.shosetsu.android.common.ext.logV
 import com.google.accompanist.web.AccompanistWebViewClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 /*
  * This file is part of shosetsu.
@@ -27,8 +34,13 @@ import com.google.accompanist.web.AccompanistWebViewClient
  * @since 23 / 05 / 2023
  * @author Doomsdayrs
  */
-class ChapterReaderAccompanistWebViewClient : AccompanistWebViewClient() {
-	private var applied = false
+class ChapterReaderAccompanistWebViewClient(
+	private val openURI: (Uri) -> Unit,
+	private val scope: CoroutineScope,
+	private val ttsState: StateFlow<String?>,
+	private val getChapterHTMLStyle: () -> Flow<ShosetsuStyle>,
+) : AccompanistWebViewClient() {
+	private var lastJob: Job? = null
 
 	/**
 	 * Block redirects by clicking links
@@ -37,22 +49,70 @@ class ChapterReaderAccompanistWebViewClient : AccompanistWebViewClient() {
 	 */
 	override fun shouldOverrideUrlLoading(
 		view: WebView?,
-		request: WebResourceRequest?
-	): Boolean = true
+		request: WebResourceRequest
+	): Boolean {
+		openURI(request.url)
+		return true
+	}
 
 	/**
 	 * Apply event listeners after a page is loaded
 	 */
-	override fun onPageFinished(view: WebView?, url: String?) {
+	override fun onPageFinished(view: WebView, url: String?) {
 		super.onPageFinished(view, url)
-		if (!applied) {
-			view?.evaluateJavascript(
-				"""
-				window.addEventListener("click",(event)=>{ shosetsuScript.onClick(); });
-				window.addEventListener("dblclick",(event)=>{ shosetsuScript.onDClick(); });
+		view.evaluateJavascript(
+			"""
+				if (!window._shosetsuListenersAdded) {
+					window.addEventListener("click",(event)=>{ shosetsuScript.onClick(null); });
+					window.addEventListener("dblclick",(event)=>{ shosetsuScript.onDClick(); });
+					window._shosetsuListenersAdded = true;
+				}
+				document.querySelectorAll('[id]').forEach(function(element) {
+					if (!element._shosetsuListenersAdded) {
+						element.addEventListener('click', function(event) {
+							event.stopPropagation();
+							shosetsuScript.onClick(element.id);
+						});
+						element._shosetsuListenersAdded = true;
+					}
+				});
 				""".trimIndent(), null
-			)
-			applied = true
+		)
+		lastJob?.cancel()
+		lastJob = scope.launch {
+			getChapterHTMLStyle().collect { style ->
+				view.evaluateJavascript(style.toJs(), null)
+			}
+
+			var oldTtsElement: String? = null
+			ttsState.collect { id ->
+				if (id != null) {
+					logV("Moving TTS highlight to $id")
+					view.evaluateJavascript(
+						"""
+							var element = document.getElementById("textElement$id");
+							element.classList.add("tts-border-style");
+							""".trimIndent() + if (oldTtsElement != null) {
+							logV("Removing old TTS highlight from $oldTtsElement")
+							"""
+								var element2 = document.getElementById("textElement$oldTtsElement");
+								element2.classList.remove("tts-border-style");
+								""".trimIndent()
+						} else "",
+						null,
+					)
+				} else if (oldTtsElement != null) {
+					logV("TTS Stopped? Removing old TTS highlight from $oldTtsElement")
+					view.evaluateJavascript(
+						"""
+							var element2 = document.getElementById("textElement$oldTtsElement");
+							element2.classList.remove("tts-border-style");
+							""".trimIndent(),
+						null,
+					)
+				}
+				oldTtsElement = id
+			}
 		}
 	}
 }

@@ -2,28 +2,45 @@ package app.shosetsu.android.ui.reader.page
 
 import android.annotation.SuppressLint
 import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.BuildConfig
+import app.shosetsu.android.R
 import app.shosetsu.android.common.ShosetsuAccompanistWebChromeClient
 import app.shosetsu.android.common.utils.ProgressiveDelayer
 import app.shosetsu.android.view.compose.ScrollStateBar
+import app.shosetsu.android.view.uimodels.StableHolder
 import com.google.accompanist.web.LoadingState
 import com.google.accompanist.web.WebView
 import com.google.accompanist.web.WebViewState
 import com.google.accompanist.web.rememberWebViewNavigator
 import com.google.accompanist.web.rememberWebViewStateWithHTMLData
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
-/*
+/**
  * This file is part of shosetsu.
  *
  * shosetsu is free software: you can redistribute it and/or modify
@@ -48,13 +65,30 @@ fun HTMLPage(
 	html: String,
 	progress: Double,
 	onScroll: (perc: Double) -> Unit,
-	onClick: () -> Unit,
-	onDoubleClick: () -> Unit
+	onClick: (String?) -> Unit,
+	onDoubleClick: () -> Unit,
+	ttsProgress: StableHolder<StateFlow<String?>>,
+	getChapterHTMLStyle: () -> Flow<ShosetsuStyle>,
+	onSearchQuery: (String) -> Unit,
+	openUri: (String) -> Unit,
 ) {
 	val scope = rememberCoroutineScope()
 	val scrollState = rememberScrollState()
 	val state = rememberWebViewStateWithHTMLData(html)
 	val navigator = rememberWebViewNavigator(scope)
+	var uriToOpen: Uri? by remember { mutableStateOf(null) }
+
+	if (uriToOpen != null) {
+		HTMLPageUriDialog(
+			uriToOpen!!,
+			open = {
+				openUri(uriToOpen.toString())
+			},
+			reset = {
+				uriToOpen = null
+			}
+		)
+	}
 
 	/*
 	LaunchedEffect(navigator) {
@@ -77,12 +111,14 @@ fun HTMLPage(
 			}
 		}
 
-	val backgroundColor = MaterialTheme.colors.background
+	val backgroundColor = MaterialTheme.colorScheme.background
 	ScrollStateBar(scrollState) {
 		WebView(
 			state = state,
 			captureBackPresses = false,
 			onCreated = { webView ->
+				(webView as? ChapterReaderWebview)?.searchInBrowser = onSearchQuery
+
 				webView.setBackgroundColor(backgroundColor.toArgb())
 				webView.settings.apply {
 					@SuppressLint("SetJavaScriptEnabled")
@@ -114,9 +150,19 @@ fun HTMLPage(
 				.fillMaxWidth()
 				.heightIn(min = 1.dp)
 				.verticalScroll(scrollState),
-			client = ChapterReaderAccompanistWebViewClient(),
+			client = ChapterReaderAccompanistWebViewClient(
+				openURI = {
+					uriToOpen = it
+				},
+				scope = scope,
+				ttsState = ttsProgress.item,
+				getChapterHTMLStyle = getChapterHTMLStyle,
+			),
 			chromeClient = ShosetsuAccompanistWebChromeClient(),
 			navigator = navigator,
+			factory = {
+				ChapterReaderWebview(it)
+			}
 		)
 	}
 
@@ -141,7 +187,42 @@ fun HTMLPage(
 	}
 }
 
+@Composable
+fun HTMLPageUriDialog(uri: Uri, open: () -> Unit, reset: () -> Unit) {
+	AlertDialog(
+		confirmButton = {
+			TextButton(
+				onClick = {
+					open()
+					reset()
+				}
+			) {
+				Text(stringResource(android.R.string.ok))
+			}
+		},
+		dismissButton = {
+			TextButton(
+				onClick = {
+					reset()
+				}
+			) {
+				Text(stringResource(android.R.string.cancel))
+			}
+		},
+		onDismissRequest = reset,
+		title = {
+			Text(stringResource(R.string.reader_open_uri_title))
+		},
+		text = {
+			Column {
+				Text(stringResource(R.string.reader_open_uri_desc))
+				Text(uri.toString())
+			}
+		}
+	)
+}
+
 val WebViewState.sIsLoading: Boolean
 	get() = (loadingState is LoadingState.Loading &&
-			(loadingState as LoadingState.Loading).progress != 1f) ||
-			loadingState is LoadingState.Initializing
+		(loadingState as LoadingState.Loading).progress != 1f) ||
+		loadingState is LoadingState.Initializing

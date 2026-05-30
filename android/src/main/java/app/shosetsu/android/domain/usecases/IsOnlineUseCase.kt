@@ -4,7 +4,12 @@ import android.app.Application
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkCapabilities.*
+import android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH
+import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
+import android.net.NetworkCapabilities.TRANSPORT_ETHERNET
+import android.net.NetworkCapabilities.TRANSPORT_VPN
+import android.net.NetworkCapabilities.TRANSPORT_WIFI
+import android.net.NetworkRequest
 import android.os.Build
 import androidx.core.content.getSystemService
 import androidx.work.impl.utils.registerDefaultNetworkCallbackCompat
@@ -100,7 +105,16 @@ class IsOnlineUseCase(
 			}
 		}
 
-		connectivityManager.registerDefaultNetworkCallbackCompat(callback)
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+			connectivityManager.registerDefaultNetworkCallbackCompat(callback)
+		} else {
+			// For Android 5
+			connectivityManager.registerNetworkCallback(
+				NetworkRequest.Builder().build(),
+				callback
+			)
+		}
+
 
 		awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
 	}

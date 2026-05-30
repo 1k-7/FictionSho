@@ -1,17 +1,84 @@
 package app.shosetsu.android.di
 
-import app.shosetsu.android.domain.usecases.*
+import app.shosetsu.android.domain.usecases.AddCategoryUseCase
+import app.shosetsu.android.domain.usecases.AddRepositoryUseCase
+import app.shosetsu.android.domain.usecases.CancelExtensionInstallUseCase
+import app.shosetsu.android.domain.usecases.DeleteCategoryUseCase
+import app.shosetsu.android.domain.usecases.DownloadChapterPassageUseCase
+import app.shosetsu.android.domain.usecases.ForceInsertRepositoryUseCase
+import app.shosetsu.android.domain.usecases.InstallExtensionUseCase
+import app.shosetsu.android.domain.usecases.IsOnlineUseCase
+import app.shosetsu.android.domain.usecases.MoveCategoryUseCase
+import app.shosetsu.android.domain.usecases.NovelBackgroundAddUseCase
+import app.shosetsu.android.domain.usecases.PurgeNovelCacheUseCase
+import app.shosetsu.android.domain.usecases.RecordChapterIsReadUseCase
+import app.shosetsu.android.domain.usecases.RecordChapterIsReadingUseCase
+import app.shosetsu.android.domain.usecases.RemoveExtensionEntityUseCase
+import app.shosetsu.android.domain.usecases.RequestInstallExtensionUseCase
+import app.shosetsu.android.domain.usecases.SearchBookMarkedNovelsUseCase
+import app.shosetsu.android.domain.usecases.SetNovelCategoriesUseCase
+import app.shosetsu.android.domain.usecases.SetNovelPinUseCase
+import app.shosetsu.android.domain.usecases.SetNovelsCategoriesUseCase
+import app.shosetsu.android.domain.usecases.StartDownloadWorkerAfterUpdateUseCase
+import app.shosetsu.android.domain.usecases.StartRepositoryUpdateManagerUseCase
+import app.shosetsu.android.domain.usecases.UninstallExtensionUseCase
 import app.shosetsu.android.domain.usecases.delete.DeleteChapterPassageUseCase
 import app.shosetsu.android.domain.usecases.delete.DeleteRepositoryUseCase
 import app.shosetsu.android.domain.usecases.delete.TrueDeleteChapterUseCase
-import app.shosetsu.android.domain.usecases.get.*
-import app.shosetsu.android.domain.usecases.load.*
+import app.shosetsu.android.domain.usecases.get.GetCatalogueListingDataUseCase
+import app.shosetsu.android.domain.usecases.get.GetCatalogueQueryDataUseCase
+import app.shosetsu.android.domain.usecases.get.GetCategoriesUseCase
+import app.shosetsu.android.domain.usecases.get.GetChapterPassageUseCase
+import app.shosetsu.android.domain.usecases.get.GetChapterUIsUseCase
+import app.shosetsu.android.domain.usecases.get.GetExtListingNamesUseCase
+import app.shosetsu.android.domain.usecases.get.GetExtSelectedListingFlowUseCase
+import app.shosetsu.android.domain.usecases.get.GetExtSelectedListingUseCase
+import app.shosetsu.android.domain.usecases.get.GetExtensionSettingsUseCase
+import app.shosetsu.android.domain.usecases.get.GetExtensionUseCase
+import app.shosetsu.android.domain.usecases.get.GetInstalledExtensionUseCase
+import app.shosetsu.android.domain.usecases.get.GetLastReadChapterUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelCategoriesUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelSettingFlowUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelUIUseCase
+import app.shosetsu.android.domain.usecases.get.GetReaderChaptersUseCase
+import app.shosetsu.android.domain.usecases.get.GetReaderSettingUseCase
+import app.shosetsu.android.domain.usecases.get.GetRemoteNovelUseCase
+import app.shosetsu.android.domain.usecases.get.GetRepositoryUseCase
+import app.shosetsu.android.domain.usecases.get.GetTrueDeleteChapterUseCase
+import app.shosetsu.android.domain.usecases.get.GetURLUseCase
+import app.shosetsu.android.domain.usecases.get.GetUserAgentUseCase
+import app.shosetsu.android.domain.usecases.load.LoadBrowseExtensionsUseCase
+import app.shosetsu.android.domain.usecases.load.LoadDeletePreviousChapterUseCase
+import app.shosetsu.android.domain.usecases.load.LoadDownloadsUseCase
+import app.shosetsu.android.domain.usecases.load.LoadLibraryFilterSettingsUseCase
+import app.shosetsu.android.domain.usecases.load.LoadLibraryUseCase
+import app.shosetsu.android.domain.usecases.load.LoadLiveAppThemeUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIBadgeToastUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIColumnsHUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIColumnsPUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUITypeUseCase
+import app.shosetsu.android.domain.usecases.load.LoadReaderThemes
+import app.shosetsu.android.domain.usecases.load.LoadRepositoriesUseCase
+import app.shosetsu.android.domain.usecases.load.LoadSearchRowUIUseCase
+import app.shosetsu.android.domain.usecases.load.LoadUpdatesUseCase
 import app.shosetsu.android.domain.usecases.settings.LoadChaptersResumeFirstUnreadUseCase
 import app.shosetsu.android.domain.usecases.settings.LoadNavigationStyleUseCase
 import app.shosetsu.android.domain.usecases.settings.LoadRequireDoubleBackUseCase
 import app.shosetsu.android.domain.usecases.settings.SetNovelUITypeUseCase
-import app.shosetsu.android.domain.usecases.start.*
-import app.shosetsu.android.domain.usecases.update.*
+import app.shosetsu.android.domain.usecases.start.StartAppUpdateInstallWorkerUseCase
+import app.shosetsu.android.domain.usecases.start.StartBackupMigrationWorkerUseCase
+import app.shosetsu.android.domain.usecases.start.StartBackupWorkerUseCase
+import app.shosetsu.android.domain.usecases.start.StartDownloadWorkerUseCase
+import app.shosetsu.android.domain.usecases.start.StartRestoreWorkerUseCase
+import app.shosetsu.android.domain.usecases.start.StartUpdateWorkerUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateBookmarkedNovelUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateChapterUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateExtSelectedListing
+import app.shosetsu.android.domain.usecases.update.UpdateExtensionSettingUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateLibraryFilterStateUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateNovelSettingUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateNovelUseCase
+import app.shosetsu.android.domain.usecases.update.UpdateRepositoryUseCase
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
@@ -46,7 +113,7 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 	bind<LoadLibraryUseCase>() with provider { LoadLibraryUseCase(instance(), instance()) }
 
 	bind<SearchBookMarkedNovelsUseCase>() with provider { SearchBookMarkedNovelsUseCase(instance()) }
-	bind<ToggleNovelPinUseCase>() with provider { ToggleNovelPinUseCase(instance()) }
+	bind<SetNovelPinUseCase>() with provider { SetNovelPinUseCase(instance()) }
 
 
 	bind<LoadBrowseExtensionsUseCase>() with provider {
@@ -64,7 +131,6 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 
 	bind<RequestInstallExtensionUseCase>() with provider {
 		RequestInstallExtensionUseCase(
-			instance(),
 			instance(),
 			instance()
 		)
@@ -119,10 +185,8 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 		StartDownloadWorkerUseCase(instance(), instance())
 	}
 	bind<StartUpdateWorkerUseCase>() with provider {
-		StartUpdateWorkerUseCase(instance())
+		StartUpdateWorkerUseCase(instance(), instance())
 	}
-
-	bind<LoadRemoteAppUpdateUseCase>() with provider { LoadRemoteAppUpdateUseCase(instance()) }
 
 	bind<UpdateBookmarkedNovelUseCase>() with provider { UpdateBookmarkedNovelUseCase(instance()) }
 
@@ -140,8 +204,6 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 		)
 	}
 	bind<IsOnlineUseCase>() with provider { IsOnlineUseCase(instance()) }
-
-	bind<LoadAppUpdateFlowLiveUseCase>() with provider { LoadAppUpdateFlowLiveUseCase(instance()) }
 
 	bind<GetCatalogueQueryDataUseCase>() with provider {
 		GetCatalogueQueryDataUseCase(instance(), instance())
@@ -180,12 +242,6 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 	bind<StartAppUpdateInstallWorkerUseCase>() with provider {
 		StartAppUpdateInstallWorkerUseCase(instance())
 	}
-	bind<CanAppSelfUpdateUseCase>() with provider {
-		CanAppSelfUpdateUseCase(instance())
-	}
-	bind<LoadAppUpdateUseCase>() with provider {
-		LoadAppUpdateUseCase(instance())
-	}
 	bind<SetNovelUITypeUseCase>() with provider {
 		SetNovelUITypeUseCase(instance())
 	}
@@ -207,12 +263,13 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 	bind<StartBackupWorkerUseCase>() with provider {
 		StartBackupWorkerUseCase(instance(), instance())
 	}
-	bind<LoadInternalBackupNamesUseCase>() with provider {
-		LoadInternalBackupNamesUseCase(instance())
+
+	bind<StartBackupMigrationWorkerUseCase>() with provider {
+		StartBackupMigrationWorkerUseCase(instance(), instance(), instance())
 	}
 
 	bind<StartRestoreWorkerUseCase>() with provider {
-		StartRestoreWorkerUseCase(instance(), instance())
+		StartRestoreWorkerUseCase(instance())
 	}
 
 	bind<AddRepositoryUseCase>() with provider {
@@ -289,7 +346,6 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 
 	bind<CancelExtensionInstallUseCase>() with provider { CancelExtensionInstallUseCase(instance()) }
 
-	bind<LoadBackupProgressFlowUseCase>() with provider { LoadBackupProgressFlowUseCase(instance()) }
 	bind<RemoveExtensionEntityUseCase>() with provider {
 		RemoveExtensionEntityUseCase(
 			instance(),
@@ -300,13 +356,6 @@ val useCaseModule: DI.Module = DI.Module("useCase") {
 	bind<InstallExtensionUseCase>() with provider {
 		InstallExtensionUseCase(
 			instance(),
-			instance(),
-			instance()
-		)
-	}
-
-	bind<StartExportBackupWorkerUseCase>() with provider {
-		StartExportBackupWorkerUseCase(
 			instance(),
 			instance()
 		)

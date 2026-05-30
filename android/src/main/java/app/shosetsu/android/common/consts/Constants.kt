@@ -27,19 +27,16 @@ import app.shosetsu.android.BuildConfig
  * A default user agent string, should not be used
  */
 const val DEFAULT_USER_AGENT =
-	"Mozilla/5.0 (Linux, Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+	"Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.50 Mobile Safari/537.36"
 
 /**
  * User agent for when we want to be soft and cuddly to sites.
  */
 val SHOSETSU_USER_AGENT =
 	"Shosetsu/${BuildConfig.VERSION_NAME} " +
-			"(Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL})"
+		"(Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL})"
 
 const val SELECTED_STROKE_WIDTH: Int = 4
-
-/** How fast the user must fling inorder to activate the scroll to last */
-const val FLING_THRESHOLD = 19999
 
 /**
  * Size of sub text, used for description
@@ -77,21 +74,26 @@ const val APK_MIME = "application/vnd.android.package-archive"
 /**
  * Constant of twenty minutes
  */
-const val MAX_CONTINOUS_READING_TIME: Long = 1000L * 60 * 20
+const val MAX_CONTINUOUS_READING_TIME: Long = 1000L * 60 * 20
 
 /**
  * The version of backups this build of shosetsu supports
  */
-const val VERSION_BACKUP: String = "1.2.0"
+const val VERSION_BACKUP: String = "1.3.0"
 const val BACKUP_FILE_EXTENSION = "sbk"
-const val REPOSITORY_HELP_URL = "https://shosetsu.app/help/guides/repositories/"
-const val BROWSE_HELP_URL = "https://shosetsu.app/help/guides/browse/"
-const val SHARE_HELP_URL = "https://shosetsu.app/help/guides/share/"
+
+/**
+ * Links
+ */
+const val URL_HELP_REPOSITORY = "https://shosetsu.app/help/guides/repositories.html"
+const val URL_HELP_BROWSE = "https://shosetsu.app/help/guides/browse.html"
+const val URL_HELP_SHARE = "https://shosetsu.app/help/guides/share.html"
+const val URL_HELP_CSS = "https://shosetsu.app/help/guides/css.html"
 const val URL_WEBSITE = "https://shosetsu.app"
 const val URL_PRIVACY = "https://shosetsu.app/privacy"
 const val URL_DISCLAIMER = "https://shosetsu.app/disclaimer"
-const val URL_GITHUB_APP = "https://gitlab.com/shosetsuorg/shosetsu"
-const val URL_GITHUB_EXTENSIONS = "https://gitlab.com/shosetsuorg/extensions"
+const val URL_APP_REPO = "https://gitlab.com/shosetsuorg/shosetsu"
+const val URL_EXTENSIONS_REPO = "https://gitlab.com/shosetsuorg/extensions"
 const val URL_PATREON = "https://www.patreon.com/doomsdayrs"
 const val URL_KOFI = "https://ko-fi.com/doomsdayrs"
 const val URL_DISCORD = "https://discord.gg/ttSX7gB"

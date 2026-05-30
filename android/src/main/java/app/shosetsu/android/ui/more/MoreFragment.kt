@@ -1,38 +1,45 @@
 package app.shosetsu.android.ui.more
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Divider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.outlined.AddShoppingCart
+import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.HistoryEdu
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavOptions
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.navOptions
 import app.shosetsu.android.R
-import app.shosetsu.android.common.ext.ComposeView
-import app.shosetsu.android.common.ext.makeSnackBar
-import app.shosetsu.android.common.ext.navigateSafely
-import app.shosetsu.android.common.ext.setShosetsuTransition
-import app.shosetsu.android.view.compose.ShosetsuCompose
-import app.shosetsu.android.view.controller.ShosetsuFragment
-import app.shosetsu.android.view.controller.base.CollapsedToolBarController
-import app.shosetsu.android.view.controller.base.HomeFragment
 
 /*
  * This file is part of Shosetsu.
@@ -51,62 +58,37 @@ import app.shosetsu.android.view.controller.base.HomeFragment
  * along with Shosetsu.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * shosetsu
- * 12 / 09 / 2020
- *
- * Option for download queue
- */
-class MoreFragment
-	: ShosetsuFragment(), CollapsedToolBarController, HomeFragment {
-
-	override val viewTitleRes: Int = R.string.more
-
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedViewState: Bundle?
-	): View {
-		setViewTitle()
-		return ComposeView {
-			MoreView(
-				makeSnackBar = {
-					makeSnackBar(it)?.show()
-				},
-				navigateSafely = { id, options ->
-					findNavController().navigateSafely(id, null, options)
-				}
-			)
-		}
-	}
-}
-
 @Composable
 fun MoreView(
-	makeSnackBar: (Int) -> Unit,
-	navigateSafely: (Int, NavOptions) -> Unit
+	onNavToDownloads: () -> Unit = {},
+	onNavToBackup: () -> Unit = {},
+	onNavToRepositories: () -> Unit = {},
+	onNavToCategories: () -> Unit = {},
+	onNavToAddShare: () -> Unit = {},
+	onNavToAnalytics: () -> Unit = {},
+	onNavToHistory: () -> Unit = {},
+	onNavToSettings: () -> Unit = {},
+	onNavToAbout: () -> Unit = {},
+	drawerIcon: @Composable () -> Unit
 ) {
-	ShosetsuCompose {
-		MoreContent(
-			showStyleBar = {
-				makeSnackBar(R.string.style_wait)
-			}
-		) { it, singleTop ->
-			navigateSafely(
-				it,
-				navOptions {
-					launchSingleTop = singleTop
-					setShosetsuTransition()
-				}
-			)
-		}
-	}
+	MoreContent(
+		onNavToDownloads = onNavToDownloads,
+		onNavToBackup = onNavToBackup,
+		onNavToCategories = onNavToCategories,
+		onNavToRepositories = onNavToRepositories,
+		onNavToAddShare = onNavToAddShare,
+		onNavToAnalytics = onNavToAnalytics,
+		onNavToHistory = onNavToHistory,
+		onNavToSettings = onNavToSettings,
+		onNavToAbout = onNavToAbout,
+		drawerIcon = drawerIcon
+	)
 }
 
 @Composable
 fun MoreItemContent(
 	@StringRes title: Int,
-	@DrawableRes drawableRes: Int,
+	icon: ImageVector,
 	onClick: () -> Unit
 ) {
 	Box(
@@ -118,7 +100,7 @@ fun MoreItemContent(
 			verticalAlignment = Alignment.CenterVertically
 		) {
 			Icon(
-				painterResource(drawableRes),
+				icon,
 				null,
 				modifier = Modifier
 					.padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 24.dp)
@@ -133,98 +115,114 @@ fun MoreItemContent(
 @Preview
 @Composable
 fun PreviewMoreContent() {
-	MoreContent({}) { _, _ -> }
+	MoreContent(
+		drawerIcon = { }
+	)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreContent(
-	showStyleBar: () -> Unit,
-	pushController: (Int, singleTop: Boolean) -> Unit
+	onNavToDownloads: () -> Unit = {},
+	onNavToBackup: () -> Unit = {},
+	onNavToRepositories: () -> Unit = {},
+	onNavToCategories: () -> Unit = {},
+	onNavToAddShare: () -> Unit = {},
+	onNavToAnalytics: () -> Unit = {},
+	onNavToHistory: () -> Unit = {},
+	onNavToSettings: () -> Unit = {},
+	onNavToAbout: () -> Unit = {},
+	drawerIcon: @Composable () -> Unit
 ) {
-	LazyColumn(
-		modifier = Modifier.fillMaxSize(),
-		contentPadding = PaddingValues(bottom = 80.dp)
-	) {
-		item {
-			Box(
-				modifier = Modifier.fillMaxWidth()
-			) {
-				Image(
-					painterResource(R.drawable.shou_icon_thick),
-					stringResource(R.string.app_name),
-					modifier = Modifier
-						.height(120.dp)
-						.align(Alignment.Center),
+	Scaffold(
+		topBar = {
+			TopAppBar(
+				title = {
+					Text(stringResource(R.string.more))
+				},
+				scrollBehavior = enterAlwaysScrollBehavior(),
+				navigationIcon = drawerIcon
+			)
+		},
+	) { padding ->
+		LazyColumn(
+			modifier = Modifier
+				.fillMaxSize()
+				.padding(padding),
+			contentPadding = PaddingValues(bottom = 80.dp)
+		) {
+			item {
+				Box(
+					modifier = Modifier.fillMaxWidth()
+				) {
+					Image(
+						painterResource(R.drawable.shou_icon),
+						stringResource(R.string.app_name),
+						modifier = Modifier
+							.height(120.dp)
+							.align(Alignment.Center),
+						colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+					)
+				}
+			}
+			item {
+				HorizontalDivider()
+			}
+			item {
+				MoreItemContent(R.string.downloads, Icons.Default.Download, onNavToDownloads)
+			}
+
+			item {
+				MoreItemContent(R.string.backup, Icons.Outlined.Restore, onNavToBackup)
+			}
+
+			item {
+				MoreItemContent(
+					R.string.repositories,
+					Icons.Outlined.AddShoppingCart,
+					onNavToRepositories
 				)
 			}
-		}
-		item {
-			Divider()
-		}
-		item {
-			MoreItemContent(R.string.downloads, R.drawable.download) {
-				pushController(R.id.action_moreController_to_downloadsController, true)
+
+			item {
+				MoreItemContent(
+					R.string.categories,
+					Icons.AutoMirrored.Outlined.Label,
+					onNavToCategories
+				)
 			}
-		}
 
-		item {
-			MoreItemContent(R.string.backup, R.drawable.restore) {
-				pushController(R.id.action_moreController_to_backupSettings, true)
+			item {
+				MoreItemContent(
+					R.string.qr_code_scan,
+					Icons.Outlined.Link,
+					onNavToAddShare
+				)
 			}
-		}
 
-		item {
-			MoreItemContent(R.string.repositories, R.drawable.add_shopping_cart) {
-				pushController(R.id.action_moreController_to_repositoryController, true)
+
+			item {
+				MoreItemContent(
+					R.string.fragment_more_dest_analytics,
+					Icons.Outlined.Analytics,
+					onNavToAnalytics
+				)
 			}
-		}
 
-		item {
-			MoreItemContent(R.string.categories, R.drawable.ic_baseline_label_24) {
-				pushController(R.id.action_moreController_to_categoriesController, true)
+			item {
+				MoreItemContent(
+					R.string.fragment_more_dest_history,
+					Icons.Outlined.HistoryEdu,
+					onNavToHistory
+				)
 			}
-		}
 
-		item {
-			MoreItemContent(R.string.styles, R.drawable.ic_baseline_style_24) {
-				showStyleBar()
+			item {
+				MoreItemContent(R.string.settings, Icons.Outlined.Settings, onNavToSettings)
 			}
-		}
 
-		item {
-			MoreItemContent(R.string.qr_code_scan, R.drawable.ic_baseline_link_24) {
-				pushController(R.id.action_moreController_to_addShareController, true)
-			}
-		}
-
-
-		item {
-			MoreItemContent(
-				R.string.fragment_more_dest_analytics,
-				R.drawable.baseline_analytics_24
-			) {
-				pushController(R.id.action_moreController_to_analyticsFragment, true)
-			}
-		}
-
-		item {
-			MoreItemContent(
-				R.string.fragment_more_dest_history,
-				R.drawable.baseline_history_edu_24
-			) {
-				pushController(R.id.action_moreController_to_historyFragment, true)
-			}
-		}
-
-		item {
-			MoreItemContent(R.string.settings, R.drawable.settings) {
-				pushController(R.id.action_moreController_to_settingsController, false)
-			}
-		}
-
-		item {
-			MoreItemContent(R.string.about, R.drawable.info_outline) {
-				pushController(R.id.action_moreController_to_aboutController, false)
+			item {
+				MoreItemContent(R.string.about, Icons.Outlined.Info, onNavToAbout)
 			}
 		}
 	}

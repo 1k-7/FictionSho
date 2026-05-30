@@ -28,10 +28,24 @@ import kotlinx.coroutines.flow.Flow
 abstract class AAdvancedSettingsViewModel(iSettingsRepository: ISettingsRepository) :
 	ASubSettingsViewModel(iSettingsRepository) {
 
+	sealed interface PurgeState {
+		data object Success : PurgeState
+		data class Failure(val exception: Exception) : PurgeState
+	}
+
+	abstract val purgeState: Flow<PurgeState>
+
+	sealed interface RestartResult {
+		data object RESTARTED : RestartResult
+		data object KILLED : RestartResult
+	}
+
+	abstract val workerState: Flow<RestartResult>
+
 	/**
 	 * Executes a purge async, provides a [LiveData] for result
 	 */
-	abstract fun purgeUselessData(): Flow<Unit>
+	abstract fun purgeUselessData()
 
 	abstract fun killCycleWorkers()
 	abstract fun startCycleWorkers()

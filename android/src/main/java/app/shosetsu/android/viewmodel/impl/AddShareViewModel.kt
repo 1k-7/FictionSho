@@ -13,7 +13,11 @@ import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.domain.model.local.InstalledExtensionEntity
 import app.shosetsu.android.domain.model.local.NovelEntity
 import app.shosetsu.android.domain.model.local.RepositoryEntity
-import app.shosetsu.android.domain.repository.base.*
+import app.shosetsu.android.domain.repository.base.IExtensionEntitiesRepository
+import app.shosetsu.android.domain.repository.base.IExtensionRepoRepository
+import app.shosetsu.android.domain.repository.base.IExtensionsRepository
+import app.shosetsu.android.domain.repository.base.INovelsRepository
+import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.usecases.RequestInstallExtensionUseCase
 import app.shosetsu.android.domain.usecases.StartRepositoryUpdateManagerUseCase
 import app.shosetsu.android.domain.usecases.get.GetURLUseCase
@@ -152,14 +156,12 @@ class AddShareViewModel(
 								val ext = ExtensionLink(
 									http.queryParameter("extID")!!.toInt(),
 									http.queryParameter("extName")!!,
-									http.queryParameter("extURL")!!.toHttpUrl().toUri().normalize()
-										.toString(),
+									http.queryParameter("extURL") ?: "",
 									repo
 								)
 								val novel = NovelLink(
 									http.queryParameter("name")!!,
-									http.queryParameter("imageURL")!!.toHttpUrl().toUri()
-										.normalize().toString(),
+									http.queryParameter("imageURL") ?: "",
 									http.queryParameter("url")!!.toHttpUrl().toUri().normalize()
 										.toString(),
 									ext
@@ -222,12 +224,55 @@ class AddShareViewModel(
 								isProcessing.value = false
 								isURLValid.value = true
 							}
+
 							"repository" -> {
-								invalidate()
+								val names = http.queryParameterNames
+
+								if (!names.containsAll(
+										listOf(
+											"name",
+											"url",
+										)
+									)
+								) {
+									invalidate()
+									return@collectLatest
+								}
+
+								val repo = RepositoryLink(
+									http.queryParameter("name")!!,
+									http.queryParameter("url")!!.toHttpUrl().toUri().normalize()
+										.toString()
+								)
+
+								logI("Checking if repository is present")
+								repoEntity = try {
+									repoRepo.loadRepositories().find {
+										val entityUrl = it.url.toHttpUrl().toUri().normalize()
+										val repoLinkUrl = repo.url.toHttpUrl().toUri()
+
+										logV(entityUrl.toString())
+										logV(entityUrl.toString())
+
+										entityUrl == repoLinkUrl
+									}
+								} catch (e: SQLiteException) {
+									null
+								}
+
+								repoLink.value = repo
+
+								if (repoEntity != null)
+									isRepoAlreadyPresent.value = true
+
+								isProcessing.value = false
+								isURLValid.value = true
 							}
+
 							"extension" -> {
 								invalidate()
 							}
+
 							"style" -> {
 								invalidate()
 							}
@@ -263,7 +308,7 @@ class AddShareViewModel(
 			isAdding.value = true
 
 			// Add repository if not present
-			if (!isRepoAlreadyPresent.value) {
+			if (!isRepoAlreadyPresent.value && repoLink.value != null) {
 				val link = repoLink.value!!
 				try {
 					repoRepo.addRepository(link.url, link.name)
@@ -284,7 +329,7 @@ class AddShareViewModel(
 			}
 
 			// Add ext if not present
-			if (!isExtAlreadyPresent.value) {
+			if (!isExtAlreadyPresent.value && extLink.value != null) {
 				val link = extLink.value!!
 
 				if (repoEntity == null)
@@ -319,13 +364,13 @@ class AddShareViewModel(
 			}
 
 			// Add novel if not present
-			if (!isNovelAlreadyPresent.value) {
+			if (!isNovelAlreadyPresent.value && novelLink.value != null) {
 				val link = novelLink.value!!
 
 				if (novelEntity == null)
 					novelEntity = novelRepo.loadNovels().find {
 						getContentURL(it)?.toHttpUrl()?.toUri()?.normalize() ==
-								link.url.toHttpUrl().toUri().normalize()
+							link.url.toHttpUrl().toUri().normalize()
 					}
 
 				try {

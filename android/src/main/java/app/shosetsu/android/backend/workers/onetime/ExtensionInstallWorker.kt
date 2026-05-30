@@ -3,6 +3,8 @@ package app.shosetsu.android.backend.workers.onetime
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import android.graphics.Bitmap
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -13,7 +15,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
 import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
-import androidx.work.await
 import app.shosetsu.android.R
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.NotificationCapable
@@ -33,6 +34,8 @@ import app.shosetsu.android.common.ext.notificationBuilder
 import app.shosetsu.android.common.ext.notificationManager
 import app.shosetsu.android.common.ext.removeProgress
 import app.shosetsu.android.common.ext.setNotOngoing
+import app.shosetsu.android.common.ext.setSmallIcon
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.domain.repository.base.IChaptersRepository
 import app.shosetsu.android.domain.repository.base.IExtensionDownloadRepository
 import app.shosetsu.android.domain.repository.base.IExtensionsRepository
@@ -365,7 +368,7 @@ class ExtensionInstallWorker(appContext: Context, params: WorkerParameters) : Co
 
 	override val baseNotificationBuilder: NotificationCompat.Builder
 		get() = notificationBuilder(applicationContext, Notifications.CHANNEL_DOWNLOAD)
-			.setSmallIcon(R.drawable.download)
+			.setSmallIcon(Icons.Default.Download)
 			.setContentTitle(extensionDownloaderString)
 			.setPriority(NotificationCompat.PRIORITY_HIGH)
 			.setOngoing(true)
@@ -392,8 +395,8 @@ class ExtensionInstallWorker(appContext: Context, params: WorkerParameters) : Co
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(EXTENSION_INSTALL_WORK_ID).await()

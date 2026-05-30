@@ -69,13 +69,15 @@ interface ChapterHistoryDao : BaseDao<DBChapterHistoryEntity> {
 					)
 				)
 			} else {
-				val time = System.currentTimeMillis()
+				// If no history was made for a given chapter.
+				// We just use a placeholder value of 1 second.
+				val currentTime = System.currentTimeMillis()
 
 				insert(
 					novelId,
 					chapterId,
-					time - 1000,
-					time
+					currentTime - 1000,
+					currentTime
 				)
 			}
 		}
@@ -99,24 +101,24 @@ interface ChapterHistoryDao : BaseDao<DBChapterHistoryEntity> {
 		)
 	}
 
+	@Transaction
 	@Throws(SQLiteException::class)
 	suspend fun markChapterAsReading(chapterId: Int, novelId: Int, time: Long) {
-		onIO {
-			val history = get(chapterId)
-			if (history != null) {
-				update(
-					history.copy(
-						startedReadingAt = time
-					)
+		val history = get(chapterId)
+		if (history != null) {
+			update(
+				history.copy(
+					startedReadingAt = time,
+					endedReadingAt = null,
 				)
-			} else {
-				insert(
-					novelId,
-					chapterId,
-					System.currentTimeMillis(),
-					null
-				)
-			}
+			)
+		} else {
+			insert(
+				novelId,
+				chapterId,
+				startedReadingAt = time,
+				endedReadingAt = null,
+			)
 		}
 	}
 

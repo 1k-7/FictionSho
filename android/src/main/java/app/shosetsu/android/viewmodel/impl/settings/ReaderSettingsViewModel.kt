@@ -1,27 +1,62 @@
 package app.shosetsu.android.viewmodel.impl.settings
 
 import android.annotation.SuppressLint
-import android.app.Application
+import android.speech.tts.TextToSpeech
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.shosetsu.android.R
-import app.shosetsu.android.common.SettingKey.*
+import app.shosetsu.android.common.SettingKey.ReaderContinuousScroll
+import app.shosetsu.android.common.SettingKey.ReaderDisableTextSelection
+import app.shosetsu.android.common.SettingKey.ReaderDoubleTapFocus
+import app.shosetsu.android.common.SettingKey.ReaderDoubleTapSystem
+import app.shosetsu.android.common.SettingKey.ReaderEnableFullscreen
+import app.shosetsu.android.common.SettingKey.ReaderEngine
+import app.shosetsu.android.common.SettingKey.ReaderIndentSize
+import app.shosetsu.android.common.SettingKey.ReaderIsInvertedSwipe
+import app.shosetsu.android.common.SettingKey.ReaderIsTapToScroll
+import app.shosetsu.android.common.SettingKey.ReaderKeepScreenOn
+import app.shosetsu.android.common.SettingKey.ReaderLanguage
+import app.shosetsu.android.common.SettingKey.ReaderMatchFullscreenToFocus
+import app.shosetsu.android.common.SettingKey.ReaderNextChapter
+import app.shosetsu.android.common.SettingKey.ReaderParagraphSpacing
+import app.shosetsu.android.common.SettingKey.ReaderPitch
+import app.shosetsu.android.common.SettingKey.ReaderShowChapterDivider
+import app.shosetsu.android.common.SettingKey.ReaderSpeed
+import app.shosetsu.android.common.SettingKey.ReaderTableHack
+import app.shosetsu.android.common.SettingKey.ReaderTextSize
+import app.shosetsu.android.common.SettingKey.ReaderTheme
+import app.shosetsu.android.common.SettingKey.ReaderTrackLongReading
+import app.shosetsu.android.common.SettingKey.ReaderVoice
+import app.shosetsu.android.common.SettingKey.ReaderVolumeScroll
+import app.shosetsu.android.common.ext.toast
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.usecases.load.LoadReaderThemes
 import app.shosetsu.android.view.compose.setting.FloatSliderSettingContent
 import app.shosetsu.android.view.compose.setting.SliderSettingContent
 import app.shosetsu.android.view.compose.setting.SwitchSettingContent
+import app.shosetsu.android.view.compose.setting.widget.ListPreferenceWidget
+import app.shosetsu.android.view.compose.setting.widget.TextPreferenceWidget
 import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.android.view.uimodels.model.ColorChoiceUI
 import app.shosetsu.android.viewmodel.abstracted.settings.AReaderSettingsViewModel
 import app.shosetsu.android.viewmodel.base.ExposedSettingsRepoViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 /*
  * This file is part of shosetsu.
@@ -46,7 +81,6 @@ import kotlinx.coroutines.flow.combine
  */
 class ReaderSettingsViewModel(
 	iSettingsRepository: ISettingsRepository,
-	private val app: Application,
 	val loadReaderThemes: LoadReaderThemes
 ) : AReaderSettingsViewModel(iSettingsRepository) {
 
@@ -55,30 +89,6 @@ class ReaderSettingsViewModel(
 			a.map { if (it.id == b.toLong()) it.copy(isSelected = true) else it }
 		}.onIO()
 
-}
-
-@SuppressLint("ComposableNaming")
-@Composable
-fun ExposedSettingsRepoViewModel.stringAsHtmlOption() {
-	SwitchSettingContent(
-		stringResource(R.string.settings_reader_title_string_to_html),
-		stringResource(R.string.settings_reader_desc_string_to_html),
-		settingsRepo,
-		ReaderStringToHtml, modifier = Modifier
-			.fillMaxWidth()
-	)
-}
-
-@SuppressLint("ComposableNaming")
-@Composable
-fun ExposedSettingsRepoViewModel.horizontalSwitchOption() {
-	SwitchSettingContent(
-		stringResource(R.string.settings_reader_title_horizontal_option),
-		stringResource(R.string.settings_reader_desc_horizontal_option),
-		settingsRepo,
-		ReaderHorizontalPageSwap, modifier = Modifier
-			.fillMaxWidth()
-	)
 }
 
 @SuppressLint("ComposableNaming")
@@ -299,6 +309,7 @@ fun ExposedSettingsRepoViewModel.paragraphSpacingOption() {
 	)
 }
 
+@SuppressLint("ComposableNaming")
 @Composable
 fun ExposedSettingsRepoViewModel.readerPitchOption() {
 	FloatSliderSettingContent(
@@ -314,6 +325,7 @@ fun ExposedSettingsRepoViewModel.readerPitchOption() {
 	)
 }
 
+@SuppressLint("ComposableNaming")
 @Composable
 fun ExposedSettingsRepoViewModel.readerSpeedOption() {
 	FloatSliderSettingContent(
@@ -326,5 +338,303 @@ fun ExposedSettingsRepoViewModel.readerSpeedOption() {
 		flip = true,
 		modifier = Modifier
 			.fillMaxWidth()
+	)
+}
+
+@SuppressLint("ComposableNaming")
+@Composable
+fun ExposedSettingsRepoViewModel.readerEngineOption() {
+	val context = LocalContext.current
+	val scope = rememberCoroutineScope()
+	var isInitialized by remember {
+		mutableStateOf(false)
+	}
+	val tts = remember {
+		TextToSpeech(context) { isInitialized = true }
+	}
+	val engines = remember(isInitialized) {
+		if (isInitialized) {
+			tts.engines.toList()
+		} else {
+			emptyList()
+		}
+	}
+	val selection by remember {
+		settingsRepo.getStringFlow(ReaderEngine)
+	}.collectAsState()
+	if (!isInitialized) {
+		TextPreferenceWidget(
+			title = stringResource(R.string.reader_engine),
+			subtitle = stringResource(R.string.loading),
+		)
+		return
+	}
+	val actualSelection = engines.indexOfFirst { it.name == selection }.takeUnless { it < 0 }
+		?: engines.indexOfFirst { it.name == tts.defaultEngine }.takeUnless { it < 0 }
+		?: 0
+	ListPreferenceWidget(
+		title = stringResource(R.string.reader_engine),
+		subtitle = engines.getOrNull(actualSelection)?.label,
+		icon = null,
+		value = actualSelection,
+		entries = remember {
+			engines.withIndex().associate { it.index to it.value.label }
+		},
+		onValueChange = {
+			scope.launch {
+				settingsRepo.setString(ReaderEngine, engines[it].name)
+				settingsRepo.setString(ReaderLanguage, "")
+				settingsRepo.setString(ReaderVoice, "")
+			}
+		}
+	)
+}
+
+@SuppressLint("ComposableNaming")
+@Composable
+fun ExposedSettingsRepoViewModel.readerLanguageOption() {
+	val context = LocalContext.current
+	val scope = rememberCoroutineScope()
+	var isInitialized by remember {
+		mutableStateOf(false)
+	}
+	val engine by remember {
+		settingsRepo.getStringFlow(ReaderEngine)
+	}.collectAsState()
+	val tts = remember(engine) {
+		isInitialized = false
+		if (engine.isEmpty()) {
+			TextToSpeech(context) { isInitialized = true }
+		} else {
+			TextToSpeech(context, { isInitialized = true }, engine)
+		}
+	}
+	val languages = remember(isInitialized, tts) {
+		if (isInitialized) {
+			(tts.availableLanguages ?: emptySet()).toList().sortedBy { it.displayName }
+		} else {
+			emptyList()
+		}
+	}
+	val selection by remember {
+		settingsRepo.getStringFlow(ReaderLanguage)
+	}.collectAsState()
+
+	if (!isInitialized || languages.isEmpty()) {
+		TextPreferenceWidget(
+			title = stringResource(R.string.reader_language),
+			subtitle = stringResource(R.string.loading),
+		)
+		return
+	}
+	val actualSelection = remember(engine, selection, languages) {
+		languages.indexOfFirst { it.toLanguageTag() == selection }.takeUnless { it < 0 }
+			?: languages.indexOfFirst { it.toLanguageTag() == Locale.getDefault().toLanguageTag() }
+				.takeUnless { it < 0 }
+			?: 0
+	}
+	ListPreferenceWidget(
+		title = stringResource(R.string.reader_language),
+		subtitle = languages.getOrNull(actualSelection)?.displayName,
+		icon = null,
+		value = actualSelection,
+		entries = remember {
+			languages.withIndex().associate { it.index to it.value.displayName }
+		},
+		onValueChange = {
+			scope.launch {
+				settingsRepo.setString(ReaderLanguage, languages[it].toLanguageTag())
+				settingsRepo.setString(ReaderVoice, "")
+			}
+		}
+	)
+}
+
+@SuppressLint("ComposableNaming")
+@Composable
+fun ExposedSettingsRepoViewModel.readerVoiceOption() {
+	val context = LocalContext.current
+	val scope = rememberCoroutineScope()
+	var isInitialized by remember {
+		mutableStateOf(false)
+	}
+	val engine by remember {
+		settingsRepo.getStringFlow(ReaderEngine)
+	}.collectAsState()
+	val tts = remember(engine) {
+		isInitialized = false
+		if (engine.isEmpty()) {
+			TextToSpeech(context) { isInitialized = true }
+		} else {
+			TextToSpeech(context, { isInitialized = true }, engine)
+		}
+	}
+	val language by remember {
+		settingsRepo.getStringFlow(ReaderLanguage)
+	}.collectAsState()
+	val voices = remember(isInitialized, language) {
+		if (isInitialized) {
+			val locale = language.ifEmpty { Locale.getDefault().toLanguageTag() }
+			(tts.voices ?: emptySet()).filter { it.locale.toLanguageTag() == locale }.toList()
+		} else {
+			emptyList()
+		}
+	}
+
+	val selection by remember {
+		settingsRepo.getStringFlow(ReaderVoice)
+	}.collectAsState()
+
+	if (!isInitialized || voices.isEmpty()) {
+		TextPreferenceWidget(
+			title = stringResource(R.string.reader_voice),
+			subtitle = stringResource(R.string.loading),
+		)
+		return
+	}
+	val actualSelection = remember(engine, language, selection, voices) {
+		voices.indexOfFirst { it.name == selection }.takeUnless { it < 0 }
+			?: voices.indexOfFirst { it.name == tts.defaultVoice?.name }.takeUnless { it < 0 }
+			?: 0
+	}
+	ListPreferenceWidget(
+		title = stringResource(R.string.reader_voice),
+		subtitle = voices.getOrNull(actualSelection)?.name,
+		icon = null,
+		value = actualSelection,
+		entries = remember {
+			voices.withIndex().associate { it.index to it.value.name }
+		},
+		onValueChange = {
+			scope.launch {
+				settingsRepo.setString(ReaderVoice, voices[it].name)
+			}
+		}
+	)
+}
+
+@SuppressLint("ComposableNaming")
+@Composable
+fun ExposedSettingsRepoViewModel.readerTestOption() {
+	val context = LocalContext.current
+	val engine = remember {
+		settingsRepo.getStringFlow(ReaderEngine)
+	}
+	val language = remember {
+		settingsRepo.getStringFlow(ReaderLanguage)
+	}
+	val voice = remember {
+		settingsRepo.getStringFlow(ReaderVoice)
+	}
+	val pitch = remember {
+		settingsRepo.getFloatFlow(ReaderPitch)
+	}
+	val speed = remember {
+		settingsRepo.getFloatFlow(ReaderSpeed)
+	}
+	val scope = rememberCoroutineScope()
+	TextPreferenceWidget(
+		title = stringResource(R.string.reader_test),
+		widget = { Icon(Icons.AutoMirrored.Outlined.VolumeUp, stringResource(R.string.start)) },
+		onPreferenceClick = {
+			scope.launch {
+				val ttsResult = CompletableDeferred<Int>()
+				val tts = if (engine.value.isEmpty()) {
+					TextToSpeech(context) { ttsResult.complete(it) }
+				} else {
+					TextToSpeech(context, { ttsResult.complete(it) }, engine.value)
+				}
+				when (ttsResult.await()) {
+					TextToSpeech.SUCCESS -> Unit
+					else -> {
+						context.toast(R.string.reader_test_invalid_engine)
+						return@launch
+					}
+				}
+				val languageSuccess: Boolean
+				val locale: Locale
+				if (language.value.isEmpty()) {
+					locale = Locale.getDefault()
+					val result = tts.setLanguage(Locale.getDefault())
+					languageSuccess = when (result) {
+						TextToSpeech.LANG_AVAILABLE -> true
+						TextToSpeech.LANG_COUNTRY_AVAILABLE -> true
+						TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> true
+						else -> false
+					}
+				} else {
+					val ttsLocale =
+						tts.availableLanguages.find { it.toLanguageTag() == language.value }
+					if (ttsLocale != null) {
+						locale = ttsLocale
+						val result = tts.setLanguage(locale)
+						languageSuccess = when (result) {
+							TextToSpeech.LANG_AVAILABLE -> true
+							TextToSpeech.LANG_COUNTRY_AVAILABLE -> true
+							TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> true
+							else -> false
+						}
+					} else {
+						locale = Locale.getDefault()
+						languageSuccess = false
+					}
+				}
+				if (!languageSuccess) {
+					context.toast(R.string.reader_test_invalid_language)
+					return@launch
+				}
+				val voiceSuccess: Boolean
+				if (voice.value.isNotEmpty()) {
+					val ttsVoice = tts.voices.filter { it.locale == locale }
+						.find { it.name == voice.value }
+					if (ttsVoice != null) {
+						val result = tts.setVoice(ttsVoice)
+						voiceSuccess = when (result) {
+							TextToSpeech.SUCCESS -> true
+							else -> false
+						}
+					} else {
+						voiceSuccess = false
+					}
+				} else {
+					voiceSuccess = tts.defaultVoice != null
+				}
+				if (!voiceSuccess) {
+					context.toast(R.string.reader_test_invalid_voice)
+					return@launch
+				}
+				tts.setPitch(pitch.value / 10)
+				tts.setSpeechRate(speed.value / 10)
+				tts.speak(
+					"This is a test. I am talking so you get an idea on how I talk.",
+					TextToSpeech.QUEUE_FLUSH,
+					null,
+					kotlin.random.Random.nextInt().toString()
+				)
+			}
+		},
+		modifier = Modifier
+			.fillMaxWidth()
+	)
+}
+
+@SuppressLint("ComposableNaming")
+@Composable
+fun ExposedSettingsRepoViewModel.readerReadNextChapter() {
+	SwitchSettingContent(
+		stringResource(R.string.reader_read_next_chapter_title),
+		stringResource(R.string.reader_read_next_chapter_desc),
+		settingsRepo,
+		ReaderNextChapter, modifier = Modifier
+			.fillMaxWidth()
+	)
+}
+
+@Composable
+fun ExposedSettingsRepoViewModel.EditCSS(openCSS: () -> Unit) {
+	TextPreferenceWidget(
+		title = stringResource(R.string.settings_reader_title_html_css),
+		subtitle = stringResource(R.string.settings_reader_desc_html_css),
+		onPreferenceClick = openCSS,
 	)
 }

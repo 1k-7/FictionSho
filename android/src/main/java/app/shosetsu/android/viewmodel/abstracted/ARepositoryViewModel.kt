@@ -1,10 +1,11 @@
 package app.shosetsu.android.viewmodel.abstracted
 
+import app.shosetsu.android.view.uimodels.model.QRCodeData
 import app.shosetsu.android.view.uimodels.model.RepositoryUI
-import app.shosetsu.android.viewmodel.base.IsOnlineCheckViewModel
 import app.shosetsu.android.viewmodel.base.ShosetsuViewModel
 import app.shosetsu.android.viewmodel.base.SubscribeViewModel
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /*
@@ -29,8 +30,9 @@ import kotlinx.coroutines.flow.StateFlow
  * 16 / 09 / 2020
  */
 abstract class ARepositoryViewModel
-	: SubscribeViewModel<ImmutableList<RepositoryUI>>, ShosetsuViewModel(),
-	IsOnlineCheckViewModel {
+	: SubscribeViewModel<ImmutableList<RepositoryUI>>, ShosetsuViewModel() {
+	abstract val error: Flow<Throwable>
+
 	/**
 	 * Show add dialog or not
 	 */
@@ -39,22 +41,22 @@ abstract class ARepositoryViewModel
 	/**
 	 * Add repo state
 	 */
-	abstract val addState: StateFlow<AddRepoState>
+	abstract val addState: Flow<AddRepoState>
 
 	/**
 	 * Remove repo state
 	 */
-	abstract val removeState: StateFlow<RemoveRepoState>
+	abstract val removeState: Flow<RemoveRepoState>
 
 	/**
 	 * Toggle repo is enabled state
 	 */
-	abstract val toggleIsEnabledState: StateFlow<ToggleRepoIsEnabledState>
+	abstract val toggleIsEnabledState: Flow<ToggleRepoIsEnabledState>
 
 	/**
 	 * Undo repo remove state
 	 */
-	abstract val undoRemoveState: StateFlow<UndoRepoRemoveState>
+	abstract val undoRemoveState: Flow<UndoRepoRemoveState>
 
 	/**
 	 * Adds a URL via a string the user provides
@@ -100,29 +102,34 @@ abstract class ARepositoryViewModel
 	 */
 	abstract fun hideAddDialog()
 
+	abstract val currentShare: StateFlow<RepositoryUI?>
+
+	abstract val qrCode: Flow<QRCodeData?>
+
+	abstract fun showShare(repositoryUI: RepositoryUI)
+
+	abstract fun hideShare()
+
 	sealed interface AddRepoState {
-		object Unknown : AddRepoState
 		data class Failure(
 			val exception: Exception,
 			val name: String,
 			val url: String
 		) : AddRepoState
 
-		object Success : AddRepoState
+		data object Success : AddRepoState
 	}
 
 	sealed interface UndoRepoRemoveState {
-		object Unknown : UndoRepoRemoveState
 		data class Failure(
 			val repo: RepositoryUI,
 			val exception: Exception
 		) : UndoRepoRemoveState
 
-		object Success : UndoRepoRemoveState
+		data object Success : UndoRepoRemoveState
 	}
 
 	sealed interface ToggleRepoIsEnabledState {
-		object Unknown : ToggleRepoIsEnabledState
 		data class Failure(
 			val repo: RepositoryUI,
 			val exception: Exception
@@ -135,7 +142,6 @@ abstract class ARepositoryViewModel
 	}
 
 	sealed interface RemoveRepoState {
-		object Unknown : RemoveRepoState
 		data class Failure(
 			val exception: Exception,
 			val repo: RepositoryUI

@@ -1,17 +1,18 @@
 package app.shosetsu.android.ui.reader
 
-import android.content.ComponentCallbacks2
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import app.shosetsu.android.common.consts.BundleKeys.BUNDLE_CHAPTER_ID
 import app.shosetsu.android.common.consts.BundleKeys.BUNDLE_NOVEL_ID
 import app.shosetsu.android.common.ext.collectLA
-import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.common.ext.setTheme
 import app.shosetsu.android.common.ext.viewModel
 import app.shosetsu.android.viewmodel.abstracted.AChapterReaderViewModel
@@ -51,7 +52,7 @@ class ChapterReader
 		super.onTrimMemory(level)
 		// Determine which lifecycle or system event was raised.
 		when (level) {
-			ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> {
+			TRIM_MEMORY_UI_HIDDEN -> {
 				/*
 				   Release any UI objects that currently hold memory.
 
@@ -59,9 +60,9 @@ class ChapterReader
 				*/
 			}
 
-			ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE,
-			ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
-			ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> {
+			TRIM_MEMORY_RUNNING_MODERATE,
+			TRIM_MEMORY_RUNNING_LOW,
+			TRIM_MEMORY_RUNNING_CRITICAL -> {
 				/*
 				   Release any memory that your app doesn't need to run.
 
@@ -72,9 +73,9 @@ class ChapterReader
 				*/
 			}
 
-			ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
-			ComponentCallbacks2.TRIM_MEMORY_MODERATE,
-			ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> {
+			TRIM_MEMORY_BACKGROUND,
+			TRIM_MEMORY_MODERATE,
+			TRIM_MEMORY_COMPLETE -> {
 				/*
 				   Release as much memory as the process can.
 
@@ -100,18 +101,26 @@ class ChapterReader
 
 	/** On Create */
 	public override fun onCreate(savedInstanceState: Bundle?) {
-		logV("")
 		viewModel.apply {
 			setNovelID(intent.getIntExtra(BUNDLE_NOVEL_ID, -1))
 			viewModel.setCurrentChapterID(intent.getIntExtra(BUNDLE_CHAPTER_ID, -1), true)
 		}
 		runBlocking {
-			setTheme(viewModel.appThemeLiveData.first())
+			setTheme(viewModel.appTheme.first())
 		}
-		viewModel.appThemeLiveData.collectLA(this, catch = {}) {
+		viewModel.appTheme.collectLA(this, catch = {}) {
 			setTheme(it)
 		}
 		super.onCreate(savedInstanceState)
+
+		// Tell the window to extend into the cutout area
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+			window.attributes.layoutInDisplayCutoutMode =
+				WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+		}
+
+		// Make the window edge-to-edge
+		WindowCompat.setDecorFitsSystemWindows(window, false)
 
 		setContent {
 			ChapterReaderView(

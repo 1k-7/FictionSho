@@ -3,7 +3,12 @@ package app.shosetsu.android.providers.prefrences
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import app.shosetsu.android.common.*
+import app.shosetsu.android.common.BooleanKey
+import app.shosetsu.android.common.FloatKey
+import app.shosetsu.android.common.IntKey
+import app.shosetsu.android.common.SettingKey
+import app.shosetsu.android.common.StringKey
+import app.shosetsu.android.common.StringSetKey
 import app.shosetsu.android.common.ext.logE
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -170,7 +175,8 @@ class SharedPreferenceProvider(
 					}
 				}
 
-			override fun onSharedPreferenceChanged(sp: SharedPreferences?, s: String) {
+			override fun onSharedPreferenceChanged(sp: SharedPreferences?, s: String?) {
+				if (s == null) return
 				// Evaluate what setting key [s] corresponds to
 				val key: SettingKey<*> =
 					SettingKey.valueOf(s) ?: when (s.substringBefore("_")) {

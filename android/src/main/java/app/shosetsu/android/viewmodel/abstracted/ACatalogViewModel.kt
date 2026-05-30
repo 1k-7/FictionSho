@@ -2,6 +2,7 @@ package app.shosetsu.android.viewmodel.abstracted
 
 import androidx.paging.PagingData
 import app.shosetsu.android.common.enums.NovelCardType
+import app.shosetsu.android.view.uimodels.ListingSelectionData
 import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.android.view.uimodels.model.CategoryUI
 import app.shosetsu.android.view.uimodels.model.catlog.ACatalogNovelUI
@@ -43,7 +44,7 @@ abstract class ACatalogViewModel :
 	 */
 	abstract val itemsLive: Flow<PagingData<ACatalogNovelUI>>
 
-	abstract val exceptionFlow: StateFlow<Throwable?>
+	abstract val exceptionFlow: Flow<Throwable>
 
 	/**
 	 * The list of items that will be presented as the filter menu
@@ -60,6 +61,11 @@ abstract class ACatalogViewModel :
 	 * Name of the extension that is used for its catalogue
 	 */
 	abstract val extensionName: StateFlow<String>
+
+	/**
+	 * Provides the selection data for which listing is shown
+	 */
+	abstract val listingSelectionData: StateFlow<ListingSelectionData?>
 
 	/**
 	 * What type of card to display
@@ -136,10 +142,23 @@ abstract class ACatalogViewModel :
 	/**
 	 * Get the URL to open web view for the extension
 	 */
-	abstract fun getBaseURL(): Flow<String>
+	abstract val baseURL: StateFlow<String?>
 
 	/**
 	 * Clear the cookies
 	 */
 	abstract fun clearCookies()
+
+	abstract val isFilterMenuVisible: StateFlow<Boolean>
+
+	abstract fun showFilterMenu()
+
+	abstract fun hideFilterMenu()
+	abstract val queryFlow: StateFlow<String>
+
+	/**
+	 * Set the selected listing to use and display
+	 * @param value Selection as per [listingSelectionData].
+	 */
+	abstract fun setSelectedListing(value: Int)
 }

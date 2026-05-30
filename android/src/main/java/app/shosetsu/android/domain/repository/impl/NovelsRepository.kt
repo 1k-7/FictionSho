@@ -6,7 +6,11 @@ import app.shosetsu.android.common.ext.onIO
 import app.shosetsu.android.datasource.local.database.base.IDBNovelsDataSource
 import app.shosetsu.android.datasource.remote.base.IRemoteCatalogueDataSource
 import app.shosetsu.android.datasource.remote.base.IRemoteNovelDataSource
-import app.shosetsu.android.domain.model.local.*
+import app.shosetsu.android.domain.model.local.AnalyticsNovelEntity
+import app.shosetsu.android.domain.model.local.LibraryNovelEntity
+import app.shosetsu.android.domain.model.local.NovelEntity
+import app.shosetsu.android.domain.model.local.StrippedBookmarkedNovelEntity
+import app.shosetsu.android.domain.model.local.StrippedNovelEntity
 import app.shosetsu.android.domain.repository.base.INovelsRepository
 import app.shosetsu.lib.IExtension
 import app.shosetsu.lib.Novel
@@ -57,6 +61,10 @@ class NovelsRepository(
 		onIO { database.loadNovels() }
 
 	@Throws(SQLiteException::class)
+	override suspend fun loadNovelId(novelURL: String, extensionID: Int): Int? =
+		onIO { database.loadNovelId(novelURL, extensionID) }
+
+	@Throws(SQLiteException::class)
 	override suspend fun update(novelEntity: NovelEntity): Unit =
 		onIO { database.update(novelEntity) }
 
@@ -92,6 +100,8 @@ class NovelsRepository(
 		onIO {
 			database.update(
 				novelEntity.copy(
+					// Pass the URL so extensions can rewrite novel URLs
+					url = novelInfo.link.ifBlank { novelEntity.url },
 					title = novelInfo.title,
 					imageURL = novelInfo.imageURL,
 					language = novelInfo.language,
@@ -137,14 +147,14 @@ class NovelsRepository(
 		ext: IExtension,
 		query: String,
 		data: Map<Int, Any>
-	): List<Novel.Listing> = onIO { remoteCatalogueDataSource.search(ext, query, data) }
+	): List<Novel.Info> = onIO { remoteCatalogueDataSource.search(ext, query, data) }
 
 	@Throws(SSLException::class, LuaError::class)
 	override suspend fun getCatalogueData(
 		ext: IExtension,
 		listing: Int,
 		data: Map<Int, Any>,
-	): List<Novel.Listing> = onIO { remoteCatalogueDataSource.loadListing(ext, listing, data) }
+	): List<Novel.Info> = onIO { remoteCatalogueDataSource.loadListing(ext, listing, data) }
 
 	override fun getAnalytics(): Flow<List<AnalyticsNovelEntity>> =
 		database.getAnalytics()

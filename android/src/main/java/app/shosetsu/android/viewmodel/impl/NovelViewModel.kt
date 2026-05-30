@@ -1,45 +1,80 @@
 package app.shosetsu.android.viewmodel.impl
 
 import android.graphics.BitmapFactory
-import android.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.viewModelScope
+import app.shosetsu.android.R
+import app.shosetsu.android.common.ChapterLoadException
+import app.shosetsu.android.common.NovelLoadException
+import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.RefreshException
+import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.enums.ChapterSortType
 import app.shosetsu.android.common.enums.ReadingStatus
-import app.shosetsu.android.common.ext.*
+import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.ext.logD
+import app.shosetsu.android.common.ext.logE
+import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.common.utils.copy
 import app.shosetsu.android.common.utils.share.toURL
 import app.shosetsu.android.domain.repository.base.IChaptersRepository
+import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.usecases.DownloadChapterPassageUseCase
 import app.shosetsu.android.domain.usecases.IsOnlineUseCase
 import app.shosetsu.android.domain.usecases.SetNovelCategoriesUseCase
 import app.shosetsu.android.domain.usecases.StartDownloadWorkerAfterUpdateUseCase
 import app.shosetsu.android.domain.usecases.delete.DeleteChapterPassageUseCase
 import app.shosetsu.android.domain.usecases.delete.TrueDeleteChapterUseCase
-import app.shosetsu.android.domain.usecases.get.*
+import app.shosetsu.android.domain.usecases.get.GetCategoriesUseCase
+import app.shosetsu.android.domain.usecases.get.GetChapterUIsUseCase
+import app.shosetsu.android.domain.usecases.get.GetInstalledExtensionUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelCategoriesUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelSettingFlowUseCase
+import app.shosetsu.android.domain.usecases.get.GetNovelUIUseCase
+import app.shosetsu.android.domain.usecases.get.GetRemoteNovelUseCase
+import app.shosetsu.android.domain.usecases.get.GetRepositoryUseCase
+import app.shosetsu.android.domain.usecases.get.GetURLUseCase
 import app.shosetsu.android.domain.usecases.settings.LoadChaptersResumeFirstUnreadUseCase
 import app.shosetsu.android.domain.usecases.start.StartDownloadWorkerUseCase
 import app.shosetsu.android.domain.usecases.update.UpdateNovelSettingUseCase
 import app.shosetsu.android.domain.usecases.update.UpdateNovelUseCase
-import app.shosetsu.android.view.AndroidQRCodeDrawable
 import app.shosetsu.android.view.uimodels.NovelSettingUI
 import app.shosetsu.android.view.uimodels.model.CategoryUI
 import app.shosetsu.android.view.uimodels.model.ChapterUI
 import app.shosetsu.android.view.uimodels.model.NovelUI
+import app.shosetsu.android.view.uimodels.model.QRCodeData
 import app.shosetsu.android.viewmodel.abstracted.ANovelViewModel
 import app.shosetsu.lib.share.ExtensionLink
 import app.shosetsu.lib.share.NovelLink
 import app.shosetsu.lib.share.RepositoryLink
-import io.github.g0dkar.qrcode.QRCode
-import io.github.g0dkar.qrcode.render.QRCodeCanvasFactory
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
-import kotlin.collections.set
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
+import qrcode.QRCode
 
 /*
  * This file is part of shosetsu.
@@ -80,7 +115,7 @@ class NovelViewModel(
 	private val updateNovelSettingUseCase: UpdateNovelSettingUseCase,
 	private val startDownloadWorkerUseCase: StartDownloadWorkerUseCase,
 	private val startDownloadWorkerAfterUpdateUseCase: StartDownloadWorkerAfterUpdateUseCase,
-	private val getTrueDelete: GetTrueDeleteChapterUseCase,
+	private val settingsRepo: ISettingsRepository,
 	private val trueDeleteChapter: TrueDeleteChapterUseCase,
 	private val getInstalledExtensionUseCase: GetInstalledExtensionUseCase,
 	private val getRepositoryUseCase: GetRepositoryUseCase,
@@ -89,11 +124,7 @@ class NovelViewModel(
 	private val setNovelCategoriesUseCase: SetNovelCategoriesUseCase
 ) : ANovelViewModel() {
 
-	override val chaptersException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
-
-	override val novelException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
-
-	override val otherException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
+	override val error = MutableSharedFlow<Throwable>()
 
 	override val isRefreshing = MutableStateFlow(false)
 
@@ -102,22 +133,25 @@ class NovelViewModel(
 	override val chaptersLive: StateFlow<ImmutableList<ChapterUI>> by lazy {
 		novelIDLive.flatMapLatest { id: Int ->
 			getChapterUIsUseCase(id).shareIn(viewModelScopeIO, SharingStarted.Lazily, 1)
-				.combineBookmarked().combineDownloaded().combineStatus().combineSort()
+				.combineBookmarked().combineDownloaded().combineStatus().combineString().combineSort()
 				.combineReverse().combineSelection().map { it.toImmutableList() }
 		}.catch {
-			chaptersException.value = it
+			error.emit(ChapterLoadException(it))
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, persistentListOf())
 	}
 
 	override val selectedChaptersState: StateFlow<SelectedChaptersState> by lazy {
 		chaptersLive.map { rawChapters ->
 			val chapters = rawChapters.filter { it.isSelected }
-			SelectedChaptersState(showRemoveBookmark = chapters.any { it.bookmarked },
+			SelectedChaptersState(
+				count = chapters.count(),
+				showRemoveBookmark = chapters.any { it.bookmarked },
 				showBookmark = chapters.any { !it.bookmarked },
 				showDelete = chapters.any { it.isSaved },
 				showDownload = chapters.any { !it.isSaved },
 				showMarkAsRead = chapters.any { it.readingStatus != ReadingStatus.READ },
-				showMarkAsUnread = chapters.any { it.readingStatus != ReadingStatus.UNREAD })
+				showMarkAsUnread = chapters.any { it.readingStatus != ReadingStatus.UNREAD },
+			)
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, SelectedChaptersState())
 	}
 
@@ -138,9 +172,9 @@ class NovelViewModel(
 		selectedChapters.value = emptyMap()
 	}
 
-	override val novelSettingFlow: SharedFlow<NovelSettingUI?> by lazy {
+	override val novelSettingFlow: StateFlow<NovelSettingUI?> by lazy {
 		novelIDLive.flatMapLatest { getNovelSettingFlowUseCase(it) }.onIO()
-			.shareIn(viewModelScopeIO, SharingStarted.Eagerly, 1)
+			.stateIn(viewModelScopeIO, SharingStarted.Eagerly, null)
 	}
 
 	override val categories: StateFlow<ImmutableList<CategoryUI>> by lazy {
@@ -178,67 +212,59 @@ class NovelViewModel(
 		isCategoriesDialogVisible.value = false
 	}
 
-	override fun getIfAllowTrueDelete(): Flow<Boolean> = flow {
-		emit(getTrueDelete())
-	}.onIO()
+	override val showTrueDelete: StateFlow<Boolean> =
+		settingsRepo.getBooleanFlow(SettingKey.ExposeTrueChapterDelete)
 
-	override fun getQRCode(): Flow<ImageBitmap?> = novelLive.transformLatest { novel ->
-		if (novel != null) {
-			emitAll(novelURL.transformLatest { novelURL ->
-				if (novelURL != null) {
-					emitAll(getInstalledExtensionUseCase(novel.extID).transformLatest { ext ->
-						if (ext != null) {
-							val repo = getRepositoryUseCase(ext.repoID)
-							if (repo != null) {
-								val url = NovelLink(
-									novel.title, novel.imageURL, novelURL, ExtensionLink(
-										novel.extID, ext.name, ext.imageURL, RepositoryLink(
-											repo.name, repo.url
+	override val qrCode: Flow<QRCodeData?> by lazy {
+		novelLive.transformLatest { novel ->
+			if (novel != null) {
+				emitAll(novelURL.transformLatest { novelURL ->
+					if (novelURL != null) {
+						emitAll(getInstalledExtensionUseCase(novel.extID).transformLatest { ext ->
+							if (ext != null) {
+								val repo = getRepositoryUseCase(ext.repoID)
+								if (repo != null) {
+									val url = NovelLink(
+										novel.title, novel.imageURL, novelURL, ExtensionLink(
+											novel.extID, ext.name, ext.imageURL, RepositoryLink(
+												repo.name, repo.url
+											)
 										)
-									)
-								).toURL()
-								val code = QRCode(url)
-								val encoding = code.encode()
+									).toURL()
+									val code = QRCode(url)
 
-								QRCodeCanvasFactory.AVAILABLE_IMPLEMENTATIONS["android.graphics.Bitmap"] =
-									{ width, height ->
-										AndroidQRCodeDrawable(
-											width, height
-										)
-									}
+									val bytes = code.render().getBytes()
 
-								val size = code.computeImageSize(
-									QRCode.DEFAULT_CELL_SIZE,
-									QRCode.DEFAULT_MARGIN,
-								)
-								val bytes = code.render(
-									qrCodeCanvas = AndroidQRCodeDrawable(size, size),
-									rawData = encoding,
-									brightColor = Color.WHITE,
-									darkColor = Color.BLACK,
-									marginColor = Color.WHITE
-								).toByteArray()
-
-								emit(
-									BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+									val bitmap = BitmapFactory
+										.decodeByteArray(bytes, 0, bytes.size)
 										.asImageBitmap()
-								)
+
+									emit(QRCodeData(bitmap, url))
+								} else emit(null)
 							} else emit(null)
-						} else emit(null)
-					})
-				} else emit(null)
-			})
-		} else emit(null)
-	}.onIO()
+						})
+					} else emit(null)
+				})
+			} else emit(null)
+		}.shareIn(viewModelScopeIO, SharingStarted.Lazily, 1).onIO()
+	}
 
 	override val novelLive: StateFlow<NovelUI?> by lazy {
 		novelIDLive.flatMapLatest {
 			loadNovelUIUseCase(it)
 		}.catch {
-			novelException.emit(it)
+			error.emit(NovelLoadException(it))
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, null)
+			.also {
+				it.distinctUntilChangedBy { it?.novelURL }
+					.filter { it?.loaded == false }
+					.onEach {
+						refresh()
+					}
+					.onIO()
+					.launchIn(viewModelScopeIO)
+			}
 	}
-
 
 	private val _showOnlyStatusOfFlow: Flow<ReadingStatus?> =
 		novelSettingFlow.mapLatest { it?.showOnlyReadingStatusOf }
@@ -248,6 +274,9 @@ class NovelViewModel(
 
 	private val _onlyBookmarkedFlow: Flow<Boolean> =
 		novelSettingFlow.mapLatest { it?.showOnlyBookmarked ?: false }
+
+	private val _onlyStringFlow: Flow<String?> =
+		novelSettingFlow.mapLatest { it?.showOnlyString }
 
 	private val _sortTypeFlow: Flow<ChapterSortType> =
 		novelSettingFlow.mapLatest { it?.sortType ?: ChapterSortType.SOURCE }
@@ -264,6 +293,12 @@ class NovelViewModel(
 	private fun Flow<List<ChapterUI>>.combineDownloaded(): Flow<List<ChapterUI>> =
 		combine(_onlyDownloadedFlow) { result, onlyDownloaded ->
 			if (onlyDownloaded) result.filter { it.isSaved }
+			else result
+		}
+
+	private fun Flow<List<ChapterUI>>.combineString(): Flow<List<ChapterUI>> =
+		combine(_onlyStringFlow) { result, onlyString ->
+			if (!onlyString.isNullOrBlank()) result.filter { it.title.contains(onlyString, ignoreCase = true) }
 			else result
 		}
 
@@ -307,17 +342,6 @@ class NovelViewModel(
 			}
 		}
 
-	override fun destroy() {
-		novelIDLive.value = -1 // Reset view to nothing
-		itemIndex.value = 0
-		isRefreshing.value = false
-
-		novelException.value = null
-		chaptersException.value = null
-		otherException.value = null
-		clearSelected()
-	}
-
 	private suspend fun downloadChapter(chapters: Array<ChapterUI>, startManager: Boolean = false) {
 		if (chapters.isEmpty()) return
 		downloadChapterPassageUseCase(chapters)
@@ -325,27 +349,30 @@ class NovelViewModel(
 		if (startManager) startDownloadWorkerUseCase()
 	}
 
-	override fun isOnline(): Boolean = isOnlineUseCase()
+	private val isOnline: StateFlow<Boolean> =
+		isOnlineUseCase.getFlow().stateIn(viewModelScopeIO, SharingStarted.Eagerly, false)
 
-	override fun openLastRead(): Flow<ChapterUI?> = flow {
-		val array = chaptersLive.value
+	override fun openLastRead() {
+		viewModelScopeIO.launch {
+			val array = chaptersLive.value
 
-		val sortedArray = array.sortedBy { it.order }
-		val result = isChaptersResumeFirstUnread()
+			val sortedArray = array.sortedBy { it.order }
+			val result = isChaptersResumeFirstUnread()
 
-		val item = if (!result) sortedArray.firstOrNull { it.readingStatus != ReadingStatus.READ }
-		else sortedArray.firstOrNull { it.readingStatus == ReadingStatus.UNREAD }
+			val item =
+				if (!result) sortedArray.firstOrNull { it.readingStatus != ReadingStatus.READ }
+				else sortedArray.firstOrNull { it.readingStatus == ReadingStatus.UNREAD }
 
 
-		emit(
+
 			if (item == null) {
-				null
+				openLastReadResult.emit(LastOpenResult.Complete)
 			} else {
 				itemIndex.emit(array.indexOf(item) + 1) // +1 to account for header
-				item
+				openLastReadResult.emit(LastOpenResult.Open(item))
 			}
-		)
-	}.onIO()
+		}
+	}
 
 	override val novelURL: StateFlow<String?> = flow {
 		emit(novelLive.first { it != null }?.let {
@@ -353,33 +380,40 @@ class NovelViewModel(
 		})
 	}.onIO().stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-	override fun getShareInfo(): Flow<NovelShareInfo?> = flow {
-		emit(novelLive.first { it != null }!!.let {
-			getContentURL(it)?.let { url ->
+	override val shareInfo: StateFlow<NovelShareInfo?> =
+		novelLive.combine(novelURL) { it, url ->
+			if (it != null && url != null)
 				NovelShareInfo(it.title, url)
-			}
-		})
-	}.onIO()
+			else null
+		}.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
 	override fun getChapterURL(chapterUI: ChapterUI): Flow<String?> = flow {
 		emit(getContentURL(chapterUI))
 	}.onIO()
 
-	override fun refresh(): Flow<Unit> = flow {
-		isRefreshing.value = true
-		var e: Throwable? = null
-		try {
-			loadRemoteNovel(novelIDLive.value, true)?.let {
-				startDownloadWorkerAfterUpdateUseCase(it.updatedChapters)
+	override fun refresh() {
+		viewModelScopeIO.launch {
+			if (isOnline.value) {
+				logI("Refreshing the novel data")
+				isRefreshing.emit(true)
+				try {
+					loadRemoteNovel(novelIDLive.value, true)?.let {
+						startDownloadWorkerAfterUpdateUseCase(it.updatedChapters)
+					}
+					logI("Successfully reloaded novel")
+				} catch (t: Throwable) {
+					logE("Failed refreshing the novel data", t)
+					error.emit(RefreshException(t))
+				} finally {
+					isRefreshing.emit(false)
+				}
+			} else {
+				error.emit(
+					OfflineException(R.string.fragment_novel_snackbar_cannot_inital_load_offline)
+				)
 			}
-		} catch (t: Throwable) {
-			e = t
-		} finally {
-			emit(Unit)
-			isRefreshing.value = false
 		}
-		if (e != null) throw e
-	}.onIO()
+	}
 
 	override fun setNovelID(novelID: Int) {
 		when {
@@ -485,10 +519,7 @@ class NovelViewModel(
 		itemIndex.value = index
 	}
 
-	override val hasSelected: StateFlow<Boolean> by lazy {
-		this.chaptersLive.mapLatest { chapters -> chapters.any { it.isSelected } }.onIO()
-			.stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
-	}
+	override val openLastReadResult = MutableSharedFlow<LastOpenResult>()
 
 	override fun bookmarkSelected() {
 		launchIO {
@@ -550,6 +581,19 @@ class NovelViewModel(
 
 			list.forEach {
 				selection[it.id] = true
+			}
+
+			selectedChapters.value = selection
+		}
+	}
+
+	override fun deselectAll() {
+		launchIO {
+			val list = chaptersLive.value
+			val selection = copySelected()
+
+			list.forEach {
+				selection[it.id] = false
 			}
 
 			selectedChapters.value = selection
@@ -643,4 +687,42 @@ class NovelViewModel(
 		}
 	}
 
+	override val isQRCodeVisible = MutableStateFlow(false)
+	override fun showQRCodeDialog() {
+		isQRCodeVisible.value = true
+	}
+
+	override fun hideQRCodeDialog() {
+		isQRCodeVisible.value = false
+	}
+
+	override val isShareMenuVisible = MutableStateFlow(false)
+
+	override fun openShareMenu() {
+		isShareMenuVisible.value = true
+	}
+
+	override fun hideShareMenu() {
+		isShareMenuVisible.value = false
+	}
+
+	override val isFilterMenuVisible = MutableStateFlow(false)
+
+	override fun showFilterMenu() {
+		isFilterMenuVisible.value = true
+	}
+
+	override fun hideFilterMenu() {
+		isFilterMenuVisible.value = false
+	}
+
+	override val isDownloadDialogVisible = MutableStateFlow(false)
+
+	override fun showDownloadDialog() {
+		isDownloadDialogVisible.value = true
+	}
+
+	override fun hideDownloadDialog() {
+		isDownloadDialogVisible.value = false
+	}
 }

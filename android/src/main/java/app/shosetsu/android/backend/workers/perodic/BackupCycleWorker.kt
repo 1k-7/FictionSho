@@ -10,7 +10,6 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
-import androidx.work.await
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.onetime.BackupWorker
 import app.shosetsu.android.common.SettingKey.BackupCycle
@@ -21,6 +20,7 @@ import app.shosetsu.android.common.consts.LogConstants
 import app.shosetsu.android.common.consts.WorkerTags.BACKUP_CYCLE_WORK_ID
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import org.kodein.di.instance
 import java.util.concurrent.TimeUnit
@@ -58,22 +58,32 @@ class BackupCycleWorker(
 			WorkInfo.State.ENQUEUED -> {
 				logI("BackupWorker is waiting to backup, ignoring")
 			}
+
 			WorkInfo.State.RUNNING -> {
 				logI("BackupWorker is running, ignoring")
 			}
+
 			WorkInfo.State.SUCCEEDED -> {
 				logI("BackupWorker has completed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.FAILED -> {
 				logI("Previous BackupWorker has failed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.BLOCKED -> {
 				logI("Previous BackupWorker is blocked, ignoring")
 			}
+
 			WorkInfo.State.CANCELLED -> {
 				logI("Previous BackupWorker was cancelled, starting again")
+				manager.start()
+			}
+
+			null -> {
+				logI("Previous BackupWorker is null, starting again")
 				manager.start()
 			}
 		}
@@ -109,8 +119,8 @@ class BackupCycleWorker(
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(BACKUP_CYCLE_WORK_ID).await()
@@ -125,9 +135,13 @@ class BackupCycleWorker(
 		override fun start(data: Data) {
 			launchIO {
 				logI(LogConstants.SERVICE_NEW)
+				if (backupCycle() == 0L) {
+					logI("Backup cycle is disabled")
+					return@launchIO
+				}
 				workerManager.enqueueUniquePeriodicWork(
 					BACKUP_CYCLE_WORK_ID,
-					ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+					ExistingPeriodicWorkPolicy.UPDATE,
 					PeriodicWorkRequestBuilder<BackupCycleWorker>(
 						backupCycle(),
 						TimeUnit.HOURS
@@ -141,10 +155,8 @@ class BackupCycleWorker(
 					).build()
 				)
 				logI(
-					"Worker State ${
-						workerManager.getWorkInfosForUniqueWork(
-							BACKUP_CYCLE_WORK_ID
-						).await()[0].state
+					"BackupCycleWorker State ${
+						workerManager.getWorkInfosForUniqueWork(BACKUP_CYCLE_WORK_ID).await()[0]
 					}"
 				)
 			}
@@ -155,5 +167,4 @@ class BackupCycleWorker(
 		 */
 		override fun stop(): Operation = workerManager.cancelUniqueWork(BACKUP_CYCLE_WORK_ID)
 	}
-
 }

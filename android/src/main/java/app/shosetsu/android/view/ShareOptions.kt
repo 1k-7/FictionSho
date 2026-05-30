@@ -1,25 +1,29 @@
 package app.shosetsu.android.view
 
-import android.content.Context
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.QrCode
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.LifecycleOwner
-import androidx.savedstate.SavedStateRegistryOwner
 import app.shosetsu.android.R
-import app.shosetsu.android.common.ext.launchIO
-import app.shosetsu.android.common.ext.launchUI
-import app.shosetsu.android.view.compose.ShosetsuCompose
-import kotlinx.coroutines.delay
 
 /*
  * This file is part of shosetsu.
@@ -45,104 +49,84 @@ import kotlinx.coroutines.delay
  * @author Doomsdayrs
  */
 
+@Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun openShareMenu(
-	context: Context,
-	owner: LifecycleOwner,
-	stateOwner: SavedStateRegistryOwner,
+fun NovelShareMenu(
 	shareBasicURL: () -> Unit,
-	shareQRCode: () -> Unit
+	shareQRCode: () -> Unit,
+	dismiss: () -> Unit
 ) {
-	ComposeBottomSheetDialog(context, owner, stateOwner).apply bottomSheet@{
-		setContentView(ComposeView(context).apply {
-			setViewCompositionStrategy(
-				ViewCompositionStrategy.DisposeOnLifecycleDestroyed(owner)
-			)
+	BottomSheetDialog(dismiss) {
+		Column(
+			modifier = Modifier
+		) {
+			Box(
+				modifier = Modifier
+					.height(56.dp)
+					.padding(start = 16.dp),
+				contentAlignment = Alignment.CenterStart
+			) {
+				Text(
+					stringResource(R.string.share),
+					style = MaterialTheme.typography.bodyLarge,
+					modifier = Modifier.alpha(0.8f)
+				)
+			}
 
-			setContent {
-				ShosetsuCompose {
-					Column(
-						modifier = Modifier
-					) {
-						Box(
-							modifier = Modifier.height(56.dp).padding(start = 16.dp),
-							contentAlignment = Alignment.CenterStart
-						) {
-							Text(
-								stringResource(R.string.share),
-								style = MaterialTheme.typography.bodyLarge,
-								modifier = Modifier.alpha(0.8f)
-							)
-						}
-
-						Card(
-							onClick = {
-								launchIO {
-									delay(100)
-									launchUI {
-										shareBasicURL()
-									}
-								}
-								this@bottomSheet.dismiss()
-							},
-							modifier = Modifier
-								.fillMaxWidth(),
-							shape = RectangleShape,
-							colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-						) {
-							Row(
-								verticalAlignment = Alignment.CenterVertically,
-								modifier = Modifier.height(56.dp).padding(start = 16.dp)
-							) {
-								Icon(
-									painterResource(
-										R.drawable.ic_baseline_link_24
-									),
-									"",
-									modifier = Modifier.padding(end = 8.dp)
-								)
-								Text(
-									stringResource(R.string.menu_share_url),
-									style = MaterialTheme.typography.bodyLarge
-								)
-							}
-						}
-						Card(
-							onClick = {
-								launchIO {
-									delay(100)
-									launchUI {
-										shareQRCode()
-									}
-								}
-								this@bottomSheet.dismiss()
-							},
-							modifier = Modifier
-								.fillMaxWidth(),
-							shape = RectangleShape,
-							colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-						) {
-							Row(
-								verticalAlignment = Alignment.CenterVertically,
-								modifier = Modifier.height(56.dp).padding(start = 16.dp)
-							) {
-								Icon(
-									painterResource(
-										R.drawable.ic_baseline_qr_code_24
-									),
-									"",
-									modifier = Modifier.padding(end = 8.dp)
-								)
-								Text(
-									stringResource(R.string.menu_share_qr),
-									style = MaterialTheme.typography.bodyLarge
-								)
-							}
-						}
-					}
-
+			Card(
+				onClick = {
+					shareBasicURL()
+					dismiss()
+				},
+				modifier = Modifier
+					.fillMaxWidth(),
+				shape = RectangleShape,
+				colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+			) {
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					modifier = Modifier
+						.height(56.dp)
+						.padding(start = 16.dp)
+				) {
+					Icon(
+						Icons.Outlined.Link,
+						"",
+						modifier = Modifier.padding(end = 8.dp)
+					)
+					Text(
+						stringResource(R.string.menu_share_url),
+						style = MaterialTheme.typography.bodyLarge
+					)
 				}
 			}
-		})
-	}.show()
+			Card(
+				onClick = {
+					shareQRCode()
+					dismiss()
+				},
+				modifier = Modifier
+					.fillMaxWidth(),
+				shape = RectangleShape,
+				colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+			) {
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					modifier = Modifier
+						.height(56.dp)
+						.padding(start = 16.dp)
+				) {
+					Icon(
+						Icons.Outlined.QrCode,
+						"",
+						modifier = Modifier.padding(end = 8.dp)
+					)
+					Text(
+						stringResource(R.string.menu_share_qr),
+						style = MaterialTheme.typography.bodyLarge
+					)
+				}
+			}
+		}
+	}
 }

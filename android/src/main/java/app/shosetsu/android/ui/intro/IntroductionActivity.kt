@@ -5,20 +5,40 @@ import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -34,8 +54,10 @@ import app.shosetsu.android.common.consts.URL_KOFI
 import app.shosetsu.android.common.consts.URL_PATREON
 import app.shosetsu.android.common.ext.readAsset
 import app.shosetsu.android.common.ext.viewModelDi
+import app.shosetsu.android.ui.theme.ShosetsuTheme
+import app.shosetsu.android.view.compose.NavigateBackButton
 import app.shosetsu.android.view.compose.ScrollStateBar
-import app.shosetsu.android.view.compose.ShosetsuCompose
+import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.viewmodel.abstracted.AIntroViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -83,13 +105,12 @@ class IntroductionActivity : AppCompatActivity(), DIAware {
 /**
  * Introduction view in compose
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun IntroView(
 	viewModel: AIntroViewModel = viewModelDi(),
 	exit: () -> Unit
 ) {
-	val state = rememberPagerState()
+	val state = rememberPagerState { IntroPages.entries.size }
 	val scope = rememberCoroutineScope()
 	val isLicenseRead by viewModel.isLicenseRead.collectAsState()
 	val shouldSupportShowNext by viewModel.shouldSupportShowNext.collectAsState()
@@ -115,8 +136,9 @@ fun IntroView(
 		}
 	}
 
-	ShosetsuCompose {
+	val theme by viewModel.appTheme.collectAsState()
 
+	ShosetsuTheme(theme) {
 		Scaffold(
 			bottomBar = {
 				BottomAppBar {
@@ -127,17 +149,10 @@ fun IntroView(
 					) {
 						Box {
 							if (state.currentPage > 0) {
-								IconButton(
-									onClick = {
-										scope.launch {
-											state.scrollToPage(state.currentPage - 1)
-										}
+								NavigateBackButton {
+									scope.launch {
+										state.scrollToPage(state.currentPage - 1)
 									}
-								) {
-									Icon(
-										Icons.Default.ArrowBack,
-										stringResource(androidx.navigation.ui.R.string.nav_app_bar_navigate_up_description)
-									)
 								}
 							}
 						}
@@ -146,21 +161,18 @@ fun IntroView(
 								state.currentPage != IntroPages.Support.ordinal ||
 								shouldSupportShowNext
 							) {
-								IconButton(
+								SimpleIconButton(
+									if (state.currentPage != IntroPages.End.ordinal)
+										Icons.AutoMirrored.Filled.ArrowForward
+									else Icons.Default.Close,
+									stringResource(
+										if (state.currentPage != IntroPages.End.ordinal)
+											R.string.intro_page_next else R.string.intro_close
+									),
 									onClick = {
 										nextPage()
 									}
-								) {
-									Icon(
-										if (state.currentPage != IntroPages.End.ordinal)
-											Icons.Default.ArrowForward
-										else Icons.Default.Close,
-										stringResource(
-											if (state.currentPage != IntroPages.End.ordinal)
-												R.string.intro_page_next else R.string.intro_close
-										)
-									)
-								}
+								)
 							}
 
 						}
@@ -173,7 +185,6 @@ fun IntroView(
 	}
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun IntroContent(
 	viewModel: AIntroViewModel,
@@ -183,7 +194,6 @@ fun IntroContent(
 	nextPage: () -> Unit
 ) {
 	HorizontalPager(
-		IntroPages.values().size,
 		state = state,
 		modifier = Modifier.padding(paddingValues),
 		userScrollEnabled = state.currentPage != IntroPages.Support.ordinal
@@ -432,6 +442,12 @@ fun IntroPermissionPage() {
 
 }
 
+@Preview
+@Composable
+fun PreviewIntroSupportPage() {
+	IntroSupportPage({}, {})
+}
+
 @Composable
 fun IntroSupportPage(
 	showNext: () -> Unit,
@@ -485,6 +501,7 @@ fun IntroSupportPage(
 				}
 			}
 
+			/*
 			val disagree by remember {
 				derivedStateOf {
 					listOf(
@@ -494,6 +511,7 @@ fun IntroSupportPage(
 					).random()
 				}
 			}
+			 */
 
 			TextButton(
 				{
@@ -504,7 +522,7 @@ fun IntroSupportPage(
 					.fillMaxWidth()
 					.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
 			) {
-				Text(stringResource(disagree))
+				Text(stringResource(R.string.support_ignore))
 			}
 		}
 	}
@@ -520,7 +538,6 @@ fun PreviewIntroSupportItem() {
 	}
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IntroSupportItem(textId: Int, link: String, onClick: () -> Unit) {
 	Card(

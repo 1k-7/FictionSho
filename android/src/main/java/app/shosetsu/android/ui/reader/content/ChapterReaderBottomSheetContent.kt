@@ -1,36 +1,50 @@
 package app.shosetsu.android.ui.reader.content
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.BottomSheetScaffoldState
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.PauseCircle
+import androidx.compose.material.icons.outlined.ScreenLockRotation
+import androidx.compose.material.icons.outlined.ScreenRotation
+import androidx.compose.material.icons.outlined.StopCircle
+import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.BottomSheetScaffoldState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.R
 import app.shosetsu.android.view.compose.DiscreteSlider
+import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.compose.setting.GenericBottomSettingLayout
 import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.android.view.uimodels.model.NovelReaderSettingUI
+import app.shosetsu.android.view.uimodels.model.reader.TTSPlayback
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChapterReaderBottomSheetContent(
 	scaffoldState: BottomSheetScaffoldState,
-	isTTSCapable: Boolean,
-	isTTSPlaying: Boolean,
+	ttsPlayback: TTSPlayback,
 	isBookmarked: Boolean,
 	isRotationLocked: Boolean,
 	setting: NovelReaderSettingUI,
@@ -39,6 +53,7 @@ fun ChapterReaderBottomSheetContent(
 	toggleBookmark: () -> Unit,
 	exit: () -> Unit,
 	onPlayTTS: () -> Unit,
+	onPauseTTS: () -> Unit,
 	onStopTTS: () -> Unit,
 	updateSetting: (NovelReaderSettingUI) -> Unit,
 	lowerSheet: LazyListScope.() -> Unit,
@@ -53,88 +68,78 @@ fun ChapterReaderBottomSheetContent(
 		horizontalArrangement = Arrangement.SpaceBetween,
 		verticalAlignment = Alignment.CenterVertically
 	) {
-		IconButton(onClick = exit) {
-			Icon(Icons.Filled.ArrowBack, null)
-		}
+		SimpleIconButton(Icons.AutoMirrored.Filled.ArrowBack, null, onClick = exit)
 
 		Row {
-			IconButton(onClick = toggleFocus) {
-				Icon(
-					painterResource(R.drawable.ic_baseline_visibility_off_24),
-					null
-				)
-			}
-			IconButton(onClick = toggleBookmark) {
-				Icon(
-					painterResource(
-						if (!isBookmarked) {
-							R.drawable.empty_bookmark
-						} else {
-							R.drawable.filled_bookmark
-						}
-					),
-					null
-				)
-			}
+			SimpleIconButton(
+				Icons.Outlined.VisibilityOff,
+				null,
+				onClick = toggleFocus
+			)
+			SimpleIconButton(
+				if (!isBookmarked) Icons.Outlined.BookmarkBorder
+				else Icons.Outlined.Bookmark,
+				null,
+				onClick = toggleBookmark
+			)
 
-			IconButton(onClick = toggleRotationLock) {
-				Icon(
-					painterResource(
-						if (!isRotationLocked)
-							R.drawable.ic_baseline_screen_rotation_24
-						else R.drawable.ic_baseline_screen_lock_rotation_24
-					),
-					null
+			SimpleIconButton(
+				if (!isRotationLocked) Icons.Outlined.ScreenRotation
+				else Icons.Outlined.ScreenLockRotation,
+				null,
+				onClick = toggleRotationLock
+			)
+
+			if (ttsPlayback != TTSPlayback.Playing)
+				SimpleIconButton(
+					Icons.Outlined.Audiotrack,
+					null,
+					onClick = onPlayTTS
 				)
-			}
 
-			if (isTTSCapable && !isTTSPlaying)
-				IconButton(onClick = onPlayTTS) {
-					Icon(
-						painterResource(R.drawable.ic_baseline_audiotrack_24),
-						null
-					)
-				}
+			if (ttsPlayback == TTSPlayback.Playing)
+				SimpleIconButton(
+					Icons.Outlined.PauseCircle,
+					null,
+					onClick = onPauseTTS
+				)
 
-			if (isTTSPlaying)
-				IconButton(onClick = onStopTTS) {
-					Icon(
-						painterResource(R.drawable.ic_baseline_stop_circle_24),
-						null
-					)
-				}
+			if (ttsPlayback != TTSPlayback.Stopped)
+				SimpleIconButton(
+					Icons.Outlined.StopCircle,
+					null,
+					onClick = onStopTTS
+				)
 
 			if (onShowNavigation != null) {
-				IconButton(onClick = onShowNavigation) {
-					Icon(
-						painterResource(R.drawable.unfold_less),
-						null
-					)
-				}
+				SimpleIconButton(
+					Icons.Outlined.UnfoldLess,
+					null,
+					onClick = onShowNavigation
+				)
 			}
 		}
 
-		IconButton(onClick = {
-			coroutineScope.launch {
-				if (!scaffoldState.bottomSheetState.isExpanded)
-					scaffoldState.bottomSheetState.expand()
-				else scaffoldState.bottomSheetState.collapse()
-			}
-		}) {
-			Icon(
-				if (scaffoldState.bottomSheetState.isExpanded) {
-					painterResource(R.drawable.expand_more)
-				} else {
-					painterResource(R.drawable.expand_less)
-				},
-				null
-			)
-		}
+		SimpleIconButton(
+			if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
+				Icons.Outlined.ExpandMore
+			} else {
+				Icons.Outlined.ExpandLess
+			},
+			null,
+			onClick = {
+				coroutineScope.launch {
+					if (scaffoldState.bottomSheetState.currentValue != SheetValue.Expanded) {
+						scaffoldState.bottomSheetState.expand()
+					} else {
+						scaffoldState.bottomSheetState.partialExpand()
+					}
+				}
+			})
 	}
 
 	LazyColumn(
-		contentPadding = PaddingValues(vertical = 16.dp),
-		verticalArrangement = Arrangement.spacedBy(8.dp)
+		contentPadding = PaddingValues(vertical = 16.dp)
 	) {
 		item {
 			GenericBottomSettingLayout(
@@ -156,7 +161,6 @@ fun ChapterReaderBottomSheetContent(
 					remember { StableHolder(0..10) },
 				)
 			}
-
 		}
 
 		item {

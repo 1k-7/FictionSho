@@ -4,7 +4,6 @@ import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.logI
 import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.domain.model.local.StrippedBookmarkedNovelEntity
-import app.shosetsu.android.domain.repository.base.INovelsRepository
 import app.shosetsu.android.domain.usecases.get.GetNovelUIUseCase
 import app.shosetsu.android.domain.usecases.load.LoadBrowseExtensionsUseCase
 import app.shosetsu.android.view.uimodels.model.MigrationExtensionUI
@@ -42,10 +41,9 @@ import kotlinx.coroutines.flow.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class MigrationViewModel(
 	private val getNovelUI: GetNovelUIUseCase,
-	private val loadBrowseExtensionsFlow: LoadBrowseExtensionsUseCase,
-	private val novelRepo: INovelsRepository
+	private val loadBrowseExtensionsFlow: LoadBrowseExtensionsUseCase
 ) : AMigrationViewModel() {
-	private val novelIds: MutableStateFlow<IntArray> = MutableStateFlow(intArrayOf())
+	private val novelIds: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
 
 	/**
 	 * Map of novel id to which extension is selected
@@ -151,7 +149,7 @@ class MigrationViewModel(
 		which.value = novelId
 	}
 
-	override fun setNovels(array: IntArray) {
+	override fun setNovels(array: List<Int>) {
 		novelIds.value = array
 	}
 

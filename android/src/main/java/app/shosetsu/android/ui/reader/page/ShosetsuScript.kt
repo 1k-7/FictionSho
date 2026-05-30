@@ -2,6 +2,7 @@ package app.shosetsu.android.ui.reader.page
 
 import android.webkit.JavascriptInterface
 import app.shosetsu.android.common.ext.launchUI
+import app.shosetsu.android.common.ext.logI as pLogI
 
 /*
  * This file is part of shosetsu.
@@ -32,17 +33,17 @@ import app.shosetsu.android.common.ext.launchUI
  * @param onDClickMethod called by javascript when the window is double clicked in the web view
  */
 class ShosetsuScript(
-	val onClickMethod: () -> Unit,
-	val onDClickMethod: () -> Unit
+	val onClickMethod: (String?) -> Unit,
+	val onDClickMethod: () -> Unit,
 ) {
 	/**
 	 * JavaScript function for [onClickMethod], passes event to UI thread.
 	 */
 	@Suppress("unused")
 	@JavascriptInterface
-	fun onClick() {
+	fun onClick(id: String?) {
 		launchUI {
-			onClickMethod()
+			onClickMethod(id)
 		}
 	}
 
@@ -55,5 +56,14 @@ class ShosetsuScript(
 		launchUI {
 			onDClickMethod()
 		}
+	}
+
+	/**
+	 * JavaScript function for [logI], passes event to UI thread.
+	 */
+	@Suppress("unused")
+	@JavascriptInterface
+	fun logI(text: String) {
+		pLogI(text)
 	}
 }

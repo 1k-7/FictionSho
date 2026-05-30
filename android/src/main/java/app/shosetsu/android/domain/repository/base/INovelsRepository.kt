@@ -17,7 +17,11 @@ package app.shosetsu.android.domain.repository.base
  */
 import android.database.sqlite.SQLiteException
 import androidx.paging.PagingSource
-import app.shosetsu.android.domain.model.local.*
+import app.shosetsu.android.domain.model.local.AnalyticsNovelEntity
+import app.shosetsu.android.domain.model.local.LibraryNovelEntity
+import app.shosetsu.android.domain.model.local.NovelEntity
+import app.shosetsu.android.domain.model.local.StrippedBookmarkedNovelEntity
+import app.shosetsu.android.domain.model.local.StrippedNovelEntity
 import app.shosetsu.lib.IExtension
 import app.shosetsu.lib.Novel
 import app.shosetsu.lib.exceptions.HTTPException
@@ -50,6 +54,11 @@ interface INovelsRepository {
 	 * Loads all [NovelEntity]s that are in the repository
 	 */
 	suspend fun loadNovels(): List<NovelEntity>
+
+	/**
+	 * Finds the Novel ID for the given URL and Extension
+	 */
+	suspend fun loadNovelId(novelURL: String, extensionID: Int): Int?
 
 	/**
 	 * Searches the bookmarked novels and returns a live data of them
@@ -125,7 +134,7 @@ interface INovelsRepository {
 		ext: IExtension,
 		query: String,
 		data: Map<Int, Any>
-	): List<Novel.Listing>
+	): List<Novel.Info>
 
 	/**
 	 * Loads catalogue data of an [IExtension]
@@ -135,7 +144,7 @@ interface INovelsRepository {
 		ext: IExtension,
 		listing: Int,
 		data: Map<Int, Any>,
-	): List<Novel.Listing>
+	): List<Novel.Info>
 
 	/**
 	 * Get analytic entities

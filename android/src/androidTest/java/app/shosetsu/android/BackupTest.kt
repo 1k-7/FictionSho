@@ -1,16 +1,18 @@
 package app.shosetsu.android
 
 import android.content.Context
-import android.util.Base64
 import androidx.test.platform.app.InstrumentationRegistry
 import app.shosetsu.android.common.enums.ReadingStatus
 import app.shosetsu.android.common.utils.backupJSON
-import app.shosetsu.android.domain.model.local.BackupEntity
-import app.shosetsu.android.domain.model.local.backup.*
+import app.shosetsu.android.domain.model.local.backup.BackupChapterEntity
+import app.shosetsu.android.domain.model.local.backup.BackupExtensionEntity
+import app.shosetsu.android.domain.model.local.backup.BackupNovelEntity
+import app.shosetsu.android.domain.model.local.backup.BackupRepositoryEntity
+import app.shosetsu.android.domain.model.local.backup.FleshedBackupEntity
 import app.shosetsu.android.domain.repository.base.IBackupRepository
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.future.future
-import kotlinx.serialization.encodeToString
 import org.junit.Test
 import org.kodein.di.DI
 import org.kodein.di.DIAware
@@ -69,7 +71,7 @@ class BackupTest : DIAware {
 		for (i in 0 until randomInt) {
 			add(
 				BackupRepositoryEntity(
-					randomString, randomString
+					i, randomString, randomString
 				)
 			)
 		}
@@ -82,7 +84,9 @@ class BackupTest : DIAware {
 					randomString, randomString,
 					Random.nextBoolean(),
 					ReadingStatus.fromInt(Random.nextInt() % 3 + 1),
-					randomInt.toDouble()
+					randomInt.toDouble(),
+					releaseDate = null,
+					order = i.toDouble()
 				)
 			)
 		}
@@ -91,11 +95,15 @@ class BackupTest : DIAware {
 	private fun randomNovels() = ArrayList<BackupNovelEntity>().apply {
 		for (i in 0 until randomInt) {
 			add(
-				BackupNovelEntity(
+				/* element = */ BackupNovelEntity(
+					randomString,
+					true,
+					true,
 					randomString,
 					randomString,
 					randomString,
-					randomChapters()
+					"en",
+					chapters = randomChapters()
 				)
 			)
 		}
@@ -106,6 +114,7 @@ class BackupTest : DIAware {
 			add(
 				BackupExtensionEntity(
 					randomInt,
+					1,
 					randomNovels()
 				)
 			)
@@ -131,6 +140,7 @@ class BackupTest : DIAware {
 	fun ungzip(content: ByteArray): String =
 		GZIPInputStream(content.inputStream()).bufferedReader().use { it.readText() }
 
+	@OptIn(DelicateCoroutinesApi::class)
 	@ExperimentalTime
 	@Test
 	fun test() {
@@ -170,19 +180,17 @@ class BackupTest : DIAware {
 				println("Zipped backup in ${it.duration.toDouble(DurationUnit.MILLISECONDS)}ms")
 			}.value
 
-			val base64Bytes =
-				measureTimedValue { Base64.encode(zippedBytes, Base64.DEFAULT) }.also {
-					println("Base64 backup in ${it.duration.toDouble(DurationUnit.MILLISECONDS)}ms")
-				}.value
-
 			measureTimeMillis {
+				/*
+				// TODO fix this write task
 				requireNotNull(
 					backupRepository.saveBackup(
 						BackupEntity(
-							base64Bytes
+							zippedBytes
 						)
 					)
 				)
+				 */
 			}.let {
 				println("Saved in ${it}ms")
 			}

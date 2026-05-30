@@ -1,6 +1,8 @@
 package app.shosetsu.android.viewmodel.impl
 
 import android.database.sqlite.SQLiteException
+import app.shosetsu.android.R
+import app.shosetsu.android.common.OfflineException
 import app.shosetsu.android.common.SettingKey.IsDownloadPaused
 import app.shosetsu.android.common.enums.DownloadStatus
 import app.shosetsu.android.common.ext.launchIO
@@ -19,7 +21,17 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 
 /*
  * This file is part of shosetsu.
@@ -52,15 +64,12 @@ class DownloadsViewModel(
 	private val settings: ISettingsRepository,
 	private var isOnlineUseCase: IsOnlineUseCase,
 ) : ADownloadsViewModel() {
+	private val isOnline = isOnlineUseCase.getFlow()
+		.stateIn(viewModelScopeIO, SharingStarted.Eagerly, false)
 
 	@Throws(SQLiteException::class)
 	private suspend fun updateDownloadStatus(downloads: List<DownloadUI>, status: DownloadStatus) {
 		downloadsRepository.updateStatus(downloads.convertList(), status)
-	}
-
-	@Throws(SQLiteException::class)
-	private suspend fun updateDownloadUseCase(downloadUI: DownloadUI) {
-		downloadsRepository.update(downloadUI.convertTo())
 	}
 
 	@Throws(SQLiteException::class)
@@ -104,6 +113,7 @@ class DownloadsViewModel(
 			}.toImmutableList()
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, persistentListOf())
 	}
+	override val error = MutableSharedFlow<Throwable>()
 
 	override val selectedDownloadState: StateFlow<SelectedDownloadsState> by lazy {
 		liveData.map { downloads ->
@@ -121,23 +131,22 @@ class DownloadsViewModel(
 				},
 				deleteVisible = selectedDownloads.any {
 					it.status == DownloadStatus.PAUSED ||
-							it.status == DownloadStatus.PENDING ||
-							it.status == DownloadStatus.ERROR ||
-							(isDownloadPaused.first() && it.status == DownloadStatus.DOWNLOADING)
+						it.status == DownloadStatus.PENDING ||
+						it.status == DownloadStatus.ERROR ||
+						(isDownloadPaused.first() && it.status == DownloadStatus.DOWNLOADING)
 				}
 			)
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, SelectedDownloadsState())
 	}
 
-	override fun isOnline(): Boolean = isOnlineUseCase()
 
 	override val isDownloadPaused: StateFlow<Boolean> by lazy {
 		settings.getBooleanFlow(IsDownloadPaused)
 	}
-	override val hasSelectedFlow: StateFlow<Boolean> by lazy {
+	override val selectedCountFlow: StateFlow<Int> by lazy {
 		selectedDownloads.mapLatest { map ->
-			map.values.any { it }
-		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
+			map.values.count { it }
+		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
 	}
 
 	override val showFAB: Flow<Boolean> by lazy {
@@ -148,9 +157,15 @@ class DownloadsViewModel(
 
 	override fun togglePause() {
 		launchIO {
-			settings.getBoolean(IsDownloadPaused).let { isPaused ->
-				settings.setBoolean(IsDownloadPaused, !isPaused)
-				if (isPaused) startDownloadWorkerUseCase()
+			if (isOnline.value) {
+				settings.getBoolean(IsDownloadPaused).let { isPaused ->
+					settings.setBoolean(IsDownloadPaused, !isPaused)
+					if (isPaused) startDownloadWorkerUseCase()
+				}
+			} else {
+				error.emit(
+					OfflineException(R.string.fragment_downloads_snackbar_offline_no_download)
+				)
 			}
 		}
 	}

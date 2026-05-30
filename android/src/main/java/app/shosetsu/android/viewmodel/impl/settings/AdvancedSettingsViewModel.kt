@@ -9,8 +9,7 @@ import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.usecases.PurgeNovelCacheUseCase
 import app.shosetsu.android.viewmodel.abstracted.settings.AAdvancedSettingsViewModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /*
  * This file is part of shosetsu.
@@ -41,21 +40,33 @@ class AdvancedSettingsViewModel(
 	private val novelUpdateCycleManager: NovelUpdateCycleWorker.Manager,
 	private val repoManager: RepositoryUpdateWorker.Manager,
 ) : AAdvancedSettingsViewModel(iSettingsRepository) {
-	override fun purgeUselessData(): Flow<Unit> =
-		flow {
-			emit(purgeNovelCacheUseCase())
-		}.onIO()
+
+	override val purgeState = MutableSharedFlow<PurgeState>()
+	override val workerState = MutableSharedFlow<RestartResult>()
+
+	override fun purgeUselessData() {
+		launchIO {
+			try {
+				purgeNovelCacheUseCase()
+				purgeState.emit(PurgeState.Success)
+			} catch (e: Exception) {
+				purgeState.emit(PurgeState.Failure(e))
+			}
+		}
+	}
 
 	override fun killCycleWorkers() {
 		backupCycleManager.stop()
 		appUpdateCycleManager.stop()
 		novelUpdateCycleManager.stop()
+		workerState.tryEmit(RestartResult.KILLED)
 	}
 
 	override fun startCycleWorkers() {
 		backupCycleManager.start()
 		appUpdateCycleManager.start()
 		novelUpdateCycleManager.start()
+		workerState.tryEmit(RestartResult.RESTARTED)
 	}
 
 	override fun forceRepoSync() {

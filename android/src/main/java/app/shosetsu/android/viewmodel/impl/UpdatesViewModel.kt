@@ -2,8 +2,12 @@ package app.shosetsu.android.viewmodel.impl
 
 import android.annotation.SuppressLint
 import androidx.lifecycle.viewModelScope
+import app.shosetsu.android.R
+import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.enums.ReadingStatus
 import app.shosetsu.android.common.ext.trimDate
+import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.repository.base.IUpdatesRepository
 import app.shosetsu.android.domain.usecases.IsOnlineUseCase
 import app.shosetsu.android.domain.usecases.start.StartUpdateWorkerUseCase
@@ -13,7 +17,12 @@ import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.joda.time.DateTime
 
@@ -44,41 +53,46 @@ import org.joda.time.DateTime
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdatesViewModel(
 	private val updatesRepository: IUpdatesRepository,
+	private val settingsRepository: ISettingsRepository,
 	private val startUpdateWorkerUseCase: StartUpdateWorkerUseCase,
 	private val isOnlineUseCase: IsOnlineUseCase,
 ) : AUpdatesViewModel() {
 	override val liveData: StateFlow<ImmutableMap<DateTime, List<UpdatesUI>>> by lazy {
-		updatesRepository.getCompleteUpdatesFlow().transformLatest { list ->
-			isRefreshing.value = true
-			emit(
-				list.map { (chapterID, novelID, time, chapterName, novelName, novelImageURL) ->
-					UpdatesUI(
-						chapterID = chapterID,
-						novelID = novelID,
-						time = time,
-						chapterName = chapterName,
-						novelName = novelName,
-						novelImageURL = novelImageURL,
-					)
-				}
-					.ifEmpty { emptyList() }
-					.sortedByDescending { it.time }
-					.groupBy {
-						DateTime(it.time).trimDate()
-					}.toImmutableMap()
-			)
-			isRefreshing.value = false
+		updatesRepository.getCompleteUpdatesFlow().mapLatest { list ->
+			list.map { (chapterID, novelID, time, chapterName, novelName, novelImageURL, readingStatus) ->
+				UpdatesUI(
+					chapterID = chapterID,
+					novelID = novelID,
+					time = time,
+					chapterName = chapterName,
+					novelName = novelName,
+					novelImageURL = novelImageURL,
+					readingStatus = readingStatus,
+				)
+			}
+				.ifEmpty { emptyList() }
+				.sortedByDescending { it.time }
+				.groupBy {
+					DateTime(it.time).trimDate()
+				}.toImmutableMap()
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, persistentMapOf())
 	}
 
-	override fun startUpdateManager(categoryID: Int) = startUpdateWorkerUseCase(categoryID)
+	override fun startUpdateManager(categoryID: Int) {
+		if (isOnlineFlow.value) {
+			startUpdateWorkerUseCase(categoryID)
+		} else {
+			error.tryEmit(OfflineException(R.string.generic_error_cannot_update_library_offline))
+		}
+	}
 
-	override val isOnlineFlow = isOnlineUseCase.getFlow()
+	private val isOnlineFlow = isOnlineUseCase.getFlow()
 		.stateIn(viewModelScopeIO, SharingStarted.Eagerly, false)
 
 	override fun isOnline(): Boolean = isOnlineFlow.value
 
-	override val isRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
+	override val displayDateAsMDYFlow =
+		settingsRepository.getBooleanFlow(SettingKey.NovelUpdateDateMDY)
 
 	@SuppressLint("StopShip")
 	override suspend fun updateChapter(
@@ -100,4 +114,17 @@ class UpdatesViewModel(
 			updatesRepository.clearBefore(date)
 		}
 	}
+
+	override fun showClearBefore() {
+		isClearBeforeVisible.value = true
+	}
+
+	override fun hideClearBefore() {
+		isClearBeforeVisible.value = false
+	}
+
+	override val error = MutableSharedFlow<Throwable>()
+
+	override val isClearBeforeVisible = MutableStateFlow(false)
+	override val lastUpdated = settingsRepository.getLongFlow(SettingKey.NovelUpdateLastTimestamp)
 }

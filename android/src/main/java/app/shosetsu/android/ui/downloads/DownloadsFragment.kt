@@ -17,42 +17,69 @@ package app.shosetsu.android.ui.downloads
  * along with Shosetsu.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import android.os.Bundle
-import android.view.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.view.MenuProvider
 import app.shosetsu.android.R
-import app.shosetsu.android.common.enums.DownloadStatus.*
-import app.shosetsu.android.common.ext.ComposeView
-import app.shosetsu.android.common.ext.collectLA
-import app.shosetsu.android.common.ext.displayOfflineSnackBar
-import app.shosetsu.android.common.ext.viewModel
+import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.enums.AppThemes
+import app.shosetsu.android.common.enums.DownloadStatus.DOWNLOADING
+import app.shosetsu.android.common.enums.DownloadStatus.ERROR
+import app.shosetsu.android.common.enums.DownloadStatus.PAUSED
+import app.shosetsu.android.common.enums.DownloadStatus.PENDING
+import app.shosetsu.android.common.enums.DownloadStatus.WAITING
 import app.shosetsu.android.common.ext.viewModelDi
+import app.shosetsu.android.ui.theme.ShosetsuTheme
 import app.shosetsu.android.view.compose.ErrorContent
 import app.shosetsu.android.view.compose.LazyColumnScrollbar
+import app.shosetsu.android.view.compose.MoreIconButton
+import app.shosetsu.android.view.compose.NavigateBackButton
 import app.shosetsu.android.view.compose.SelectableBox
-import app.shosetsu.android.view.compose.ShosetsuCompose
-import app.shosetsu.android.view.controller.ShosetsuFragment
-import app.shosetsu.android.view.controller.base.ExtendedFABController
-import app.shosetsu.android.view.controller.base.ExtendedFABController.EFabMaintainer
-import app.shosetsu.android.view.controller.base.syncFABWithCompose
+import app.shosetsu.android.view.compose.SelectionBar
+import app.shosetsu.android.view.compose.SelectionTopAppBar
+import app.shosetsu.android.view.compose.SimpleIconButton
 import app.shosetsu.android.view.uimodels.model.DownloadUI
 import app.shosetsu.android.viewmodel.abstracted.ADownloadsViewModel
 import app.shosetsu.android.viewmodel.abstracted.ADownloadsViewModel.SelectedDownloadsState
@@ -64,198 +91,125 @@ import kotlinx.collections.immutable.ImmutableList
  *
  * @author github.com/doomsdayrs
  */
-class DownloadsFragment : ShosetsuFragment(),
-	ExtendedFABController, MenuProvider {
-
-	override val viewTitleRes: Int = R.string.downloads
-	private val viewModel: ADownloadsViewModel by viewModel()
-	private var fab: EFabMaintainer? = null
-	private var actionMode: ActionMode? = null
-
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedViewState: Bundle?
-	): View {
-		activity?.addMenuProvider(this, viewLifecycleOwner)
-		setViewTitle()
-		return ComposeView {
-			DownloadsView(viewModel, fab)
-		}
-	}
-
-	private fun startSelectionAction(): Boolean {
-		if (actionMode != null) return false
-		hideFAB(fab!!)
-		actionMode = activity?.startActionMode(SelectionActionMode())
-		return true
-	}
-
-	override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
-		inflater.inflate(R.menu.toolbar_downloads, menu)
-	}
-
-	override fun onMenuItemSelected(item: MenuItem): Boolean {
-		return when (item.itemId) {
-			R.id.set_all_pending -> {
-				viewModel.setAllPending()
-				return true
-			}
-
-			R.id.delete_all -> {
-				viewModel.deleteAll()
-				return true
-			}
-
-			else -> false
-		}
-	}
-
-	private fun togglePause() {
-		if (viewModel.isOnline()) viewModel.togglePause() else displayOfflineSnackBar(R.string.fragment_downloads_snackbar_offline_no_download)
-	}
-
-	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-		viewModel.showFAB.collectLA(this, catch = {}) { showFAB ->
-			if (showFAB)
-				fab?.show()
-			else fab?.hide()
-		}
-		viewModel.isDownloadPaused.collectLA(this, catch = {}) {
-			fab?.setText(
-				if (it)
-					R.string.resume
-				else R.string.pause
-			)
-			fab?.setIconResource(
-				if (it)
-					R.drawable.play_arrow
-				else R.drawable.ic_pause_circle_outline_24dp
-			)
-		}
-		viewModel.hasSelectedFlow.collectLA(this, catch = {}) {
-			if (it) {
-				startSelectionAction()
-			} else {
-				actionMode?.finish()
-			}
-		}
-	}
-
-	override fun onDestroy() {
-		actionMode?.finish()
-		super.onDestroy()
-	}
-
-	override fun manipulateFAB(fab: EFabMaintainer) {
-		this.fab = fab
-		fab.setOnClickListener { togglePause() }
-		fab.setText(R.string.paused)
-		fab.setIconResource(R.drawable.ic_pause_circle_outline_24dp)
-	}
-
-	override fun showFAB(fab: EFabMaintainer) {
-		if (actionMode == null) super.showFAB(fab)
-	}
-
-	private inner class SelectionActionMode : ActionMode.Callback {
-		override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
-			// Hides the original action bar
-			// (activity as MainActivity?)?.supportActionBar?.hide()
-
-			mode.menuInflater.inflate(R.menu.toolbar_downloads_selected, menu)
-			mode.setTitle(R.string.selection)
-			return true
-		}
-
-		override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
-
-		override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean =
-			when (item.itemId) {
-				R.id.chapter_select_all -> {
-					viewModel.selectAll()
-					true
-				}
-
-				R.id.chapter_select_between -> {
-					viewModel.selectBetween()
-					true
-				}
-
-				R.id.chapter_inverse -> {
-					viewModel.invertSelection()
-					true
-				}
-
-				else -> false
-			}
-
-		override fun onDestroyActionMode(mode: ActionMode) {
-			actionMode = null
-			showFAB(fab!!)
-			viewModel.deselectAll()
-		}
-	}
-}
-
+/**
+ * View that displays downloads the app is working on
+ */
 @Composable
 fun DownloadsView(
-	viewModel: ADownloadsViewModel = viewModelDi(),
-	fab: EFabMaintainer?
+	onBack: () -> Unit
 ) {
-	ShosetsuCompose {
-		val items by viewModel.liveData.collectAsState()
-		val selectedDownloadState by viewModel.selectedDownloadState.collectAsState()
-		val hasSelected by viewModel.hasSelectedFlow.collectAsState()
+	val viewModel: ADownloadsViewModel = viewModelDi()
 
-		DownloadsContent(
-			items = items,
-			selectedDownloadState = selectedDownloadState,
-			hasSelected = hasSelected,
-			pauseSelection = viewModel::pauseSelection,
-			startSelection = viewModel::startSelection,
-			startFailedSelection = viewModel::restartSelection,
-			deleteSelected = viewModel::deleteSelected,
-			toggleSelection = viewModel::toggleSelection,
-			fab
-		)
+	val items by viewModel.liveData.collectAsState()
+	val selectedDownloadState by viewModel.selectedDownloadState.collectAsState()
+	val selectedCount by viewModel.selectedCountFlow.collectAsState()
+	val isPaused by viewModel.isDownloadPaused.collectAsState()
+	val error by viewModel.error.collectAsState(null)
+
+	val context = LocalContext.current
+	val hostState = remember { SnackbarHostState() }
+
+	LaunchedEffect(error) {
+		if (error != null) {
+			when (error) {
+				is OfflineException -> {
+					val result = hostState.showSnackbar(
+						context.getString((error as OfflineException).messageRes),
+						duration = SnackbarDuration.Long,
+						actionLabel = context.getString(R.string.generic_wifi_settings)
+					)
+					if (result == SnackbarResult.ActionPerformed) {
+						context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+					}
+				}
+
+				else -> {
+					hostState.showSnackbar(
+						error?.message ?: context.getString(R.string.error)
+					)
+				}
+			}
+		}
 	}
+
+	DownloadsContent(
+		items = items,
+		selectedDownloadState = selectedDownloadState,
+		selectedCount = selectedCount,
+		pauseSelection = viewModel::pauseSelection,
+		startSelection = viewModel::startSelection,
+		startFailedSelection = viewModel::restartSelection,
+		deleteSelected = viewModel::deleteSelected,
+		toggleSelection = viewModel::toggleSelection,
+		onInverseSelection = viewModel::invertSelection,
+		onSetAllPending = viewModel::setAllPending,
+		onDeleteAll = viewModel::deleteAll,
+		onDeselectAll = viewModel::deselectAll,
+		onSelectAll = viewModel::selectAll,
+		onSelectBetween = viewModel::selectBetween,
+		isPaused = isPaused,
+		togglePause = viewModel::togglePause,
+		onBack = onBack
+	)
 }
 
+/**
+ * Content of [DownloadsView]
+ */
 @Composable
 fun DownloadsContent(
 	items: ImmutableList<DownloadUI>,
 	selectedDownloadState: SelectedDownloadsState,
-	hasSelected: Boolean,
+	selectedCount: Int,
 	pauseSelection: () -> Unit,
 	startSelection: () -> Unit,
 	startFailedSelection: () -> Unit,
 	deleteSelected: () -> Unit,
 	toggleSelection: (DownloadUI) -> Unit,
-	fab: EFabMaintainer?
+	onInverseSelection: () -> Unit,
+	onSelectAll: () -> Unit,
+	onDeselectAll: () -> Unit,
+	onSelectBetween: () -> Unit,
+	onDeleteAll: () -> Unit,
+	onSetAllPending: () -> Unit,
+	isPaused: Boolean,
+	togglePause: () -> Unit,
+	onBack: () -> Unit
 ) {
-	if (items.isNotEmpty()) {
-		Box(
-			modifier = Modifier.fillMaxSize()
-		) {
-			val state = rememberLazyListState()
-			if (fab != null)
-				syncFABWithCompose(state, fab)
-			LazyColumnScrollbar(
-				listState = state,
-				thumbColor = MaterialTheme.colorScheme.primary,
-				thumbSelectedColor = Color.Gray,
+	Scaffold(
+		topBar = {
+			DownloadsAppBar(
+				selectedCount,
+				onInverseSelection,
+				onSelectAll,
+				onDeselectAll,
+				onSelectBetween,
+				onDeleteAll,
+				onSetAllPending,
+				onBack
+			)
+		},
+		snackbarHost = {
+		},
+		floatingActionButton = {
+			DownloadsFAB(
+				isPaused,
+				togglePause
+			)
+		}
+	) { padding ->
+		if (items.isNotEmpty()) {
+			Box(
+				modifier = Modifier
+					.fillMaxSize()
+					.padding(padding)
 			) {
-				LazyColumn(
-					modifier = Modifier.fillMaxSize(),
-					contentPadding = PaddingValues(bottom = 140.dp),
-					state = state
-				) {
+				LazyColumnScrollbar(contentPadding = PaddingValues(bottom = 140.dp)) {
 					items(items, key = { it.chapterID }) {
 						DownloadContent(
 							it,
 							onClick = {
-								if (hasSelected)
+								if (selectedCount > 0)
 									toggleSelection(it)
 							},
 							onLongClick = {
@@ -264,80 +218,192 @@ fun DownloadsContent(
 						)
 					}
 				}
-			}
 
-			if (hasSelected) {
-				Card(
-					modifier = Modifier
-						.align(BiasAlignment(0f, 0.7f))
-				) {
-					Row {
-						IconButton(
+				if (selectedCount > 0) {
+					SelectionBar {
+						SimpleIconButton(
+							Icons.Outlined.Pause,
+							stringResource(R.string.pause),
 							onClick = pauseSelection,
 							enabled = selectedDownloadState.pauseVisible
-						) {
-							Icon(
-								painterResource(R.drawable.pause),
-								stringResource(R.string.pause)
-							)
-						}
-						IconButton(
+						)
+						SimpleIconButton(
+							Icons.Default.PlayArrow,
+							stringResource(R.string.start),
 							onClick = startSelection,
 							enabled = selectedDownloadState.startVisible
-						) {
-							Icon(
-								painterResource(R.drawable.play_arrow),
-								stringResource(R.string.start)
-							)
-						}
-						IconButton(
+						)
+						SimpleIconButton(
+							Icons.Default.Refresh,
+							stringResource(R.string.restart),
 							onClick = startFailedSelection,
 							enabled = selectedDownloadState.restartVisible
-						) {
-							Icon(
-								painterResource(R.drawable.refresh),
-								stringResource(R.string.restart)
-							)
-						}
-						IconButton(
+						)
+						SimpleIconButton(
+							Icons.Default.Delete,
+							stringResource(R.string.delete),
 							onClick = deleteSelected,
 							enabled = selectedDownloadState.deleteVisible
-						) {
-							Icon(
-								painterResource(R.drawable.trash),
-								stringResource(R.string.delete)
-							)
-						}
+						)
 					}
 				}
 			}
+		} else {
+			ErrorContent(
+				stringResource(R.string.empty_downloads_message),
+				modifier = Modifier.padding(padding)
+			)
 		}
-	} else {
-		ErrorContent(
-			stringResource(R.string.empty_downloads_message)
+	}
+}
+
+/**
+ * Preview [DownloadsFAB]
+ */
+@Preview
+@Composable
+fun PreviewDownloadsFAB() {
+	Surface {
+		DownloadsFAB(
+			false,
+			onToggle = {}
 		)
 	}
 }
 
+/**
+ * Floating Action Button for [DownloadsContent]
+ */
+@Composable
+fun DownloadsFAB(
+	isPaused: Boolean,
+	onToggle: () -> Unit
+) {
+	ExtendedFloatingActionButton(
+		onClick = onToggle,
+		text = {
+			Text(
+				stringResource(
+					if (isPaused) {
+						R.string.start
+					} else {
+						R.string.pause
+					}
+				)
+			)
+		},
+		icon = {
+			if (isPaused) {
+				Icon(Icons.Default.PlayArrow, stringResource(R.string.start))
+			} else {
+				Icon(Icons.Default.Pause, stringResource(R.string.pause))
+			}
+		}
+	)
+}
+
+/**
+ * Preview [DownloadsAppBar]
+ */
 @Preview
 @Composable
-fun PreviewDownloadContent() {
-	ShosetsuCompose {
-		DownloadContent(
-			DownloadUI(
-				0,
-				0,
-				"aaa",
-				"Chpater",
-				"Novel",
-				0,
-				DOWNLOADING,
-				false
-			),
-			{},
-			{}
+fun PreviewDownloadsAppBar() {
+	Surface {
+		DownloadsAppBar(
+			selectedCount = 0,
+			onInverseSelection = {},
+			onSelectAll = {},
+			onDeselectAll = {},
+			onSelectBetween = {},
+			onDeleteAll = {},
+			onSetAllPending = {},
+			onBack = {}
 		)
 	}
+}
+
+/**
+ * Top bar of [DownloadsContent]
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DownloadsAppBar(
+	selectedCount: Int,
+	onInverseSelection: () -> Unit,
+	onSelectAll: () -> Unit,
+	onDeselectAll: () -> Unit,
+	onSelectBetween: () -> Unit,
+	onDeleteAll: () -> Unit,
+	onSetAllPending: () -> Unit,
+	onBack: () -> Unit
+) {
+	@Composable
+	fun title() {
+		Text(stringResource(R.string.downloads))
+	}
+
+	val behavior = enterAlwaysScrollBehavior()
+
+	if (selectedCount > 0) {
+		SelectionTopAppBar(
+			scrollBehavior = behavior,
+			selectedCount = selectedCount,
+			onSelectAll = onSelectAll,
+			onInverseSelection = onInverseSelection,
+			onSelectBetween = onSelectBetween,
+			onDeselectAll = onDeselectAll,
+		)
+	} else {
+		TopAppBar(
+			title = { title() },
+			scrollBehavior = behavior,
+			actions = {
+				DownloadsMoreOption(onDeleteAll, onSetAllPending)
+			},
+			navigationIcon = {
+				NavigateBackButton(onBack)
+			}
+		)
+	}
+}
+
+@Composable
+fun DownloadsMoreOption(
+	onDeleteAll: () -> Unit,
+	onSetAllPending: () -> Unit
+) = MoreIconButton {
+	DropdownMenuItem(
+		text = {
+			Text(stringResource(R.string.fragment_downloads_set_all_pending_title))
+		},
+		onClick = onSetAllPending
+	)
+
+	DropdownMenuItem(
+		text = {
+			Text(stringResource(R.string.fragment_downloads_delete_all_title))
+		},
+		onClick = onDeleteAll
+	)
+}
+
+@Preview
+@Composable
+fun PreviewDownloadContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	DownloadContent(
+		DownloadUI(
+			0,
+			0,
+			"aaa",
+			"Chpater",
+			"Novel",
+			0,
+			DOWNLOADING,
+			false
+		),
+		{},
+		{}
+	)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -380,7 +446,7 @@ fun DownloadContent(
 				if (status == DOWNLOADING || status == WAITING) {
 					LinearProgressIndicator(modifier = Modifier.fillMaxWidth(.7f))
 				} else {
-					LinearProgressIndicator(0.0f, modifier = Modifier.fillMaxWidth(.7f))
+					LinearProgressIndicator(progress = { 0.0f }, modifier = Modifier.fillMaxWidth(.7f))
 				}
 
 				Text(

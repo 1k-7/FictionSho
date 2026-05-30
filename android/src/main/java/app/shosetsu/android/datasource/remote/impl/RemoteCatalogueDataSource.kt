@@ -33,13 +33,12 @@ import java.io.IOException
  * 10 / May / 2020
  */
 class RemoteCatalogueDataSource : IRemoteCatalogueDataSource {
-
 	@Throws(HTTPException::class, IOException::class, LuaError::class)
 	override suspend fun search(
 		ext: IExtension,
 		query: String,
 		data: Map<Int, Any>,
-	): List<Novel.Listing> {
+	): List<Novel.Info> {
 		return if (ext.hasSearch) {
 			try {
 				ext.search(HashMap(data).apply {
@@ -58,7 +57,7 @@ class RemoteCatalogueDataSource : IRemoteCatalogueDataSource {
 		ext: IExtension,
 		listingIndex: Int,
 		data: Map<Int, Any>,
-	): List<Novel.Listing> {
+	): List<Novel.Info> {
 		val listing = ext.listings[listingIndex]
 
 		logD(data.toString())

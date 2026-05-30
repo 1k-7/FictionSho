@@ -5,10 +5,17 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.graphics.drawable.IconCompat
-import androidx.work.*
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Operation
+import androidx.work.WorkInfo
+import androidx.work.WorkerParameters
 import app.shosetsu.android.R
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.NotificationCapable
@@ -21,10 +28,21 @@ import app.shosetsu.android.common.consts.LogConstants
 import app.shosetsu.android.common.consts.Notifications.CHANNEL_APP_UPDATE
 import app.shosetsu.android.common.consts.Notifications.ID_APP_UPDATE_INSTALL
 import app.shosetsu.android.common.consts.WorkerTags.APP_UPDATE_INSTALL_WORK_ID
-import app.shosetsu.android.common.ext.*
+import app.shosetsu.android.common.ext.actionBuilder
+import app.shosetsu.android.common.ext.addReportErrorAction
+import app.shosetsu.android.common.ext.getString
+import app.shosetsu.android.common.ext.getUriCompat
+import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.ext.notificationBuilder
+import app.shosetsu.android.common.ext.notificationManager
+import app.shosetsu.android.common.ext.removeProgress
+import app.shosetsu.android.common.ext.setNotOngoing
+import app.shosetsu.android.common.ext.setOngoing
+import app.shosetsu.android.common.ext.setSmallIcon
 import app.shosetsu.android.domain.repository.base.IAppUpdatesRepository
 import app.shosetsu.lib.exceptions.HTTPException
-import org.acra.ACRA
+import kotlinx.coroutines.flow.first
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.closestDI
@@ -70,7 +88,7 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 	override val baseNotificationBuilder: NotificationCompat.Builder
 		get() = notificationBuilder(applicationContext, CHANNEL_APP_UPDATE)
 			.setSubText(applicationContext.getString(R.string.notification_app_update_install_title))
-			.setSmallIcon(R.drawable.app_update)
+			.setSmallIcon(Icons.Default.SystemUpdateAlt)
 			.setProgress(0, 0, true)
 
 
@@ -79,31 +97,11 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 			setOngoing()
 		}
 
-		// Load up the app update from repo
-		val update = try {
-			updateRepo.loadAppUpdate()
-		} catch (e: FileNotFoundException) {
-			notify("Update file is missing\n ${e.message}") {
-				setNotOngoing()
-				removeProgress()
-			}
-			ACRA.errorReporter.handleSilentException(e)
-			return Result.failure()
-		} catch (e: Exception) { // TODO specific
-			notify("Exception occurred\n ${e.message}") {
-				setNotOngoing()
-				removeProgress()
-			}
-			ACRA.errorReporter.handleException(e)
-			return Result.failure()
-		}
-
-
 		notify(R.string.notification_app_update_downloading)
 
 		// download the app update and get the path to the installed file
 		val path = try {
-			updateRepo.downloadAppUpdate(update)
+			updateRepo.downloadAppUpdate()
 		} catch (e: FilePermissionException) {
 			notify("How does the app lack the ability to download its apk\n ${e.message} ") {
 				setNotOngoing()
@@ -146,6 +144,12 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 				removeProgress()
 			}
 			return Result.failure()
+		} catch (e: NoSuchElementException) {
+			notify(getString(R.string.worker_update_install_missing)) {
+				setNotOngoing()
+				removeProgress()
+			}
+			return Result.failure()
 		} catch (e: Exception) {
 			notify("Exception occurred \n ${e.message} ") {
 				setNotOngoing()
@@ -163,10 +167,7 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 			removeProgress()
 			addAction(
 				actionBuilder(
-					IconCompat.createWithResource(
-						applicationContext,
-						R.drawable.app_update
-					),
+					Icons.Default.SystemUpdateAlt,
 					applicationContext.getString(R.string.install),
 					installApkPendingActivity(applicationContext, uri)
 				).build()
@@ -202,11 +203,11 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
-			workerManager.getWorkInfosForUniqueWork(APP_UPDATE_INSTALL_WORK_ID).await()
+			workerManager.getWorkInfosForUniqueWorkFlow(APP_UPDATE_INSTALL_WORK_ID).first()
 
 		override suspend fun getCount(): Int =
 			getWorkerInfoList().size
@@ -221,8 +222,7 @@ class AppUpdateInstallWorker(appContext: Context, params: WorkerParameters) : Co
 				)
 				logI(
 					"Worker State ${
-						workerManager.getWorkInfosForUniqueWork(APP_UPDATE_INSTALL_WORK_ID)
-							.await()[0].state
+						getWorkerInfoList()[0].state
 					}"
 				)
 			}

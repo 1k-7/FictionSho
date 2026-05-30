@@ -2,13 +2,20 @@ package app.shosetsu.android.backend.workers.onetime
 
 import android.content.Context
 import android.database.sqlite.SQLiteException
-import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Base64
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Restore
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.graphics.drawable.toBitmap
-import androidx.work.*
+import androidx.core.net.toUri
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Operation
+import androidx.work.WorkInfo
+import androidx.work.WorkerParameters
 import app.shosetsu.android.R
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.NotificationCapable
@@ -18,31 +25,56 @@ import app.shosetsu.android.common.consts.Notifications
 import app.shosetsu.android.common.consts.Notifications.ID_RESTORE
 import app.shosetsu.android.common.consts.VERSION_BACKUP
 import app.shosetsu.android.common.consts.WorkerTags.RESTORE_WORK_ID
-import app.shosetsu.android.common.ext.*
+import app.shosetsu.android.common.ext.addReportErrorAction
+import app.shosetsu.android.common.ext.decodeSafeFromStream
+import app.shosetsu.android.common.ext.getString
+import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.ext.logE
+import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.ext.logV
+import app.shosetsu.android.common.ext.notificationBuilder
+import app.shosetsu.android.common.ext.notificationManager
+import app.shosetsu.android.common.ext.removeProgress
+import app.shosetsu.android.common.ext.setNotOngoing
+import app.shosetsu.android.common.ext.setSmallIcon
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.common.utils.backupJSON
-import app.shosetsu.android.domain.model.local.*
-import app.shosetsu.android.domain.model.local.backup.*
-import app.shosetsu.android.domain.repository.base.*
+import app.shosetsu.android.domain.model.local.BackupEntity
+import app.shosetsu.android.domain.model.local.GenericExtensionEntity
+import app.shosetsu.android.domain.model.local.NovelCategoryEntity
+import app.shosetsu.android.domain.model.local.NovelEntity
+import app.shosetsu.android.domain.model.local.NovelPinEntity
+import app.shosetsu.android.domain.model.local.NovelSettingEntity
+import app.shosetsu.android.domain.model.local.backup.BackupExtensionEntity
+import app.shosetsu.android.domain.model.local.backup.BackupNovelEntity
+import app.shosetsu.android.domain.model.local.backup.FleshedBackupEntity
+import app.shosetsu.android.domain.model.local.backup.MetaBackupEntity
+import app.shosetsu.android.domain.repository.base.ChapterHistoryRepository
+import app.shosetsu.android.domain.repository.base.IBackupRepository
+import app.shosetsu.android.domain.repository.base.ICategoryRepository
+import app.shosetsu.android.domain.repository.base.IChaptersRepository
+import app.shosetsu.android.domain.repository.base.IExtensionRepoRepository
+import app.shosetsu.android.domain.repository.base.IExtensionsRepository
+import app.shosetsu.android.domain.repository.base.INovelCategoryRepository
+import app.shosetsu.android.domain.repository.base.INovelPinsRepository
+import app.shosetsu.android.domain.repository.base.INovelSettingsRepository
+import app.shosetsu.android.domain.repository.base.INovelsRepository
 import app.shosetsu.android.domain.usecases.AddCategoryUseCase
 import app.shosetsu.android.domain.usecases.InstallExtensionUseCase
 import app.shosetsu.android.domain.usecases.StartRepositoryUpdateManagerUseCase
-import app.shosetsu.lib.IExtension
+import app.shosetsu.lib.Novel
 import app.shosetsu.lib.Version
-import app.shosetsu.lib.exceptions.HTTPException
 import app.shosetsu.lib.exceptions.InvalidMetaDataException
-import coil.imageLoader
-import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.decodeFromStream
 import org.acra.ACRA
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.closestDI
 import org.kodein.di.instance
-import org.luaj.vm2.LuaError
 import java.io.BufferedInputStream
 import java.io.IOException
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
 /*
@@ -75,21 +107,19 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 	private val extensionsRepoRepo by instance<IExtensionRepoRepository>()
 	private val initializeExtensionsUseCase by instance<StartRepositoryUpdateManagerUseCase>()
 	private val extensionsRepo by instance<IExtensionsRepository>()
-	private val extensionEntitiesRepo by instance<IExtensionEntitiesRepository>()
 	private val installExtension: InstallExtensionUseCase by instance()
 	private val novelsRepo by instance<INovelsRepository>()
 	private val novelPinsRepo by instance<INovelPinsRepository>()
 	private val novelsSettingsRepo by instance<INovelSettingsRepository>()
 	private val chaptersRepo by instance<IChaptersRepository>()
 	private val chapterHistoryRepo by instance<ChapterHistoryRepository>()
-	private val backupUriRepo by instance<IBackupUriRepository>()
 	private val categoriesRepo by instance<ICategoryRepository>()
 	private val novelCategoriesRepo by instance<INovelCategoryRepository>()
 	private val addCategoryUseCase by instance<AddCategoryUseCase>()
 	override val baseNotificationBuilder: NotificationCompat.Builder
 		get() = notificationBuilder(applicationContext, Notifications.CHANNEL_BACKUP)
 			.setSubText(getString(R.string.restore_notification_subtitle))
-			.setSmallIcon(R.drawable.restore)
+			.setSmallIcon(Icons.Outlined.Restore)
 			.setOnlyAlertOnce(true)
 			.setOngoing(true)
 
@@ -114,25 +144,32 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 		return BackupEntity(bis.readBytes())
 	}
 
+	private fun isBase64Encoded(inputStream: InputStream): Boolean {
+		val buffer = ByteArray(4)
+		inputStream.mark(4)
+		val bytesRead = inputStream.read(buffer)
+		inputStream.reset()
+		if (bytesRead >= 4) {
+			val content = String(buffer)
+			return content.matches(Regex("[A-Za-z0-9+/=]+"))
+		}
+		return false
+	}
+
 	@OptIn(ExperimentalSerializationApi::class)
 	@Throws(IOException::class)
 	override suspend fun doWork(): Result {
 		logI("Starting restore")
-		val backupName = inputData.getString(BACKUP_DATA_KEY)
-		val isExternal = inputData.getBoolean(BACKUP_DIR_KEY, false)
+		val backupUri = inputData.getString(BACKUP_URI_KEY)?.toUri()
 
-		if (!isExternal && backupName == null) {
-			logE("null backupName, Internal Restore requires backupName")
+		if (backupUri == null) {
+			logE("null backupUri, cannot restore")
 			return Result.failure()
 		}
 
 		notify(R.string.restore_notification_content_starting)
 		val backupEntity = try {
-			if (isExternal) {
-				backupUriRepo.take()?.let { loadBackupFromUri(it) }
-			} else {
-				backupRepo.loadBackup(backupName!!)
-			}
+			loadBackupFromUri(backupUri)
 		} catch (e: Exception) {//TODO specify
 			with(e) {
 				logE(" $message", e)
@@ -147,25 +184,22 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 				return Result.failure()
 			}
 		}
-		if (backupEntity == null) {
-			logE("Received empty, impossible")
-			notify(R.string.restore_notification_content_unexpected_empty) {
-				setNotOngoing()
-			}
-			return Result.failure()
-		}
-
 
 		// Decode encrypted string to bytes via Base64
 		notify(R.string.restore_notification_content_decoding_string)
-		val decodedBytes: ByteArray = Base64.decode(backupEntity.content, Base64.DEFAULT)
+		val decodedBytes: ByteArray = if (isBase64Encoded(backupEntity.content.inputStream())) {
+			Base64.decode(backupEntity.content, Base64.DEFAULT)
+		} else {
+			// assume gzipped
+			backupEntity.content
+		}
 
 		// Unzip bytes to a string via gzip
 		notify(R.string.restore_notification_content_unzipping_bytes)
 
 
 		unGZip(decodedBytes).use { stream ->
-			val metaInfo = backupJSON.decodeFromStream<MetaBackupEntity>(stream)
+			val metaInfo = backupJSON.decodeSafeFromStream<MetaBackupEntity>(stream)
 
 			// Reads the version line from the json, if it does not exist the process fails
 
@@ -188,7 +222,7 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 		}
 
 		unGZip(decodedBytes).use { stream ->
-			val backup = backupJSON.decodeFromStream<FleshedBackupEntity>(stream)
+			val backup = backupJSON.decodeSafeFromStream<FleshedBackupEntity>(stream)
 
 			notify("Adding categories")
 			val currentCategories = categoriesRepo.getCategories()
@@ -204,34 +238,39 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 
 			notify("Adding repositories")
 			// Adds the repositories
-			backup.repos.forEach { (url, name) ->
+			val oldRepositories = extensionsRepoRepo.loadRepositories()
+			val idMap = backup.repos.map { (id, url, name) ->
 				notify("") {
 					setContentTitle(getString(R.string.restore_notification_title_adding_repos))
 					setContentText("$name\n$url")
 				}
+				oldRepositories.find { it.url == url }?.let {
+					logI("Repository already exists, skipping")
+					return@map id to it.id
+				}
 				try {
-					extensionsRepoRepo.addRepository(
+					return@map id to extensionsRepoRepo.addRepository(
 						url,
 						name,
-					)
+					).toInt()
 				} catch (e: SQLiteException) {
 					logE("Failed to add repo", e)
 					// its likely constraint, we can ignore it
+					return@map null to null
 				}
-			}
+			}.filter { it.first != null }.toMap()
 
 			notify("Loading repository data")
 			// Load the data from the repositories
 			initializeExtensionsUseCase()
 
 			// Install the extensions
-			val repoNovels: List<NovelEntity> = novelsRepo.loadNovels()
 			val extensions = extensionsRepo.loadRepositoryExtensions()
 
 			backup.extensions.forEach {
 				restoreExtension(
+					idMap[it.repoId],
 					extensions,
-					repoNovels,
 					it,
 					categoryOrderToCategoryIds
 				)
@@ -251,200 +290,123 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 	}
 
 	private suspend fun restoreExtension(
+		repoId: Int?,
 		extensions: List<GenericExtensionEntity>,
-		repoNovels: List<NovelEntity>,
 		backupExtensionEntity: BackupExtensionEntity,
 		categoryOrderToCategoryIds: Map<Int, Int>
 	) {
 		val extensionID = backupExtensionEntity.id
 		val backupNovels = backupExtensionEntity.novels
 		logI("$extensionID")
-		extensions.find { it.id == extensionID }?.let { extensionEntity ->
-			// Install the extension
-			if (!extensionsRepo.isExtensionInstalled(extensionEntity)) {
-				logI("Installing extension $extensionID via repo ${extensionEntity.repoID}")
-				notify(getString(R.string.installing) + " ${extensionEntity.id} | ${extensionEntity.name}")
-				try {
-					installExtension(extensionEntity)
-				} catch (e: InvalidMetaDataException) {
-					notify(
-						getString(R.string.worker_extension_install_error_lua) + " ${extensionEntity.id} | ${extensionEntity.name}",
-						notificationId = extensionID
-					)
-					return
-				} catch (e: Exception) {
-					notify(
-						getString(R.string.worker_extension_install_error_lua) + " ${extensionEntity.id} | ${extensionEntity.name}",
-						notificationId = extensionID
-					)
-					ACRA.errorReporter.handleSilentException(e)
-					return
-				}
-			} else {
-				logI("Extension is installed, moving on")
+		val extensionEntity = extensions.find { (repoId == null || it.repoID == repoId) && it.id == extensionID }
+		if (extensionEntity == null) {
+			//TODO this should probably be handled
+			notify(
+				getString(R.string.restore_notification_content_extension_not_found) + " $extensionID",
+				notificationId = extensionID
+			)
+			logE("Extension not found")
+			return
+		}
+		// Install the extension
+		if (!extensionsRepo.isExtensionInstalled(extensionEntity)) {
+			logI("Installing extension $extensionID via repo ${extensionEntity.repoID}")
+			notify(getString(R.string.installing) + " ${extensionEntity.id} | ${extensionEntity.name}")
+			try {
+				installExtension(extensionEntity)
+			} catch (e: InvalidMetaDataException) {
+				notify(
+					getString(R.string.worker_extension_install_error_lua) + " ${extensionEntity.id} | ${extensionEntity.name}",
+					notificationId = extensionID
+				)
+				return
+			} catch (e: Exception) {
+				notify(
+					getString(R.string.worker_extension_install_error_lua) + " ${extensionEntity.id} | ${extensionEntity.name}",
+					notificationId = extensionID
+				)
+				ACRA.errorReporter.handleSilentException(e)
+				return
 			}
-			val iExt = extensionEntitiesRepo.get(extensionEntity)
+		} else {
+			logI("Extension is installed, moving on")
+		}
 
-			logI("Restoring extension novels")
-			backupNovels.forEach novelLoop@{ novelEntity ->
-				try {
-					restoreNovel(
-						iExt,
-						extensionID,
-						novelEntity,
-						repoNovels,
-						categoryOrderToCategoryIds
-					)
-				} catch (e: Exception) {
-					e.printStackTrace()
-				}
+		logI("Restoring extension novels")
+		backupNovels.forEach novelLoop@{ novelEntity ->
+			try {
+				restoreNovel(
+					extensionID,
+					novelEntity,
+					categoryOrderToCategoryIds
+				)
+			} catch (e: Exception) {
+				e.printStackTrace()
 			}
 		}
 	}
 
 	@Throws(Exception::class)
 	private suspend fun restoreNovel(
-		iExt: IExtension,
 		extensionID: Int,
 		backupNovelEntity: BackupNovelEntity,
-		repoNovels: List<NovelEntity>,
 		categoryOrderToCategoryIds: Map<Int, Int>
 	) {
 		logV("$extensionID, ${backupNovelEntity.url}")
-		// Use a single memory location for the bitmap
-		var bitmap: Bitmap? = null
-
-		fun clearBitmap() {
-			bitmap = null
-		}
-
 		val bNovelURL = backupNovelEntity.url
 		val name = backupNovelEntity.name
-		val imageURL = backupNovelEntity.imageURL
 		val bChapters = backupNovelEntity.chapters
 		val bSettings = backupNovelEntity.settings
 
 		logI(name)
 
-		// If none match the extension ID and URL, time to load it up
-		val loadImageJob = launchIO {
-			try {
-				bitmap =
-					applicationContext.imageLoader.execute(
-						ImageRequest.Builder(applicationContext).data(imageURL).build()
-					).drawable?.toBitmap()
-
-			} catch (e: IOException) {
-				logE("Failed to download novel image", e)
-				ACRA.errorReporter.handleSilentException(e)
-			}
-		}
-
-		var targetNovelID = -1
-		if (repoNovels.none { it.extensionID == extensionID && it.url == bNovelURL }) {
+		var targetNovelID = novelsRepo.loadNovelId(bNovelURL, extensionID) ?: -1
+		if (targetNovelID == -1) {
 			notify(R.string.restore_notification_content_novel_load) {
 				setContentTitle(name)
-				setLargeIcon(bitmap)
 			}
 
-			val siteNovel = try {
-				try {
-					iExt.parseNovel(bNovelURL, true)
-				} catch (e: LuaError) {
-					if (e.cause != null)
-						throw e.cause!!
-					else throw e
-				}
-			} catch (e: HTTPException) {
-				logE("Failed to load novel from website", e)
-
-				notify(
-					getString(
-						R.string.restore_notification_content_novel_fail_parse_http,
-						"${e.code}"
-					),
-					2000 + bNovelURL.hashCode()
-				) {
-					setContentTitle(name)
-					setLargeIcon(bitmap)
-					setNotOngoing()
-				}
-				delay(5000)
-				return
-			} catch (e: IOException) {
-				logE("Failed to locate website", e)
-
-				notify(
-					getString(
-						R.string.restore_notification_content_novel_fail_io,
-						"${e.message}"
-					),
-					2000 + bNovelURL.hashCode()
-				) {
-					setContentTitle(name)
-					setLargeIcon(bitmap)
-					setNotOngoing()
-				}
-				delay(5000)
-				return
-			} catch (e: LuaError) {
-				logE("Lua error occurred", e)
-
-				notify(
-					getString(
-						R.string.restore_notification_content_novel_fail_lua,
-						"${e.message}"
-					),
-					2000 + bNovelURL.hashCode()
-				) {
-					setContentTitle(name)
-					setLargeIcon(bitmap)
-					setNotOngoing()
-				}
-				delay(5000)
-				return
-			} catch (e: Exception) {
-				logE("Failed to parse novel while loading backup", e)
-
-				ACRA.errorReporter.handleException(e, false)
-
-				notify(
-					R.string.restore_notification_content_novel_fail_parse,
-					2000 + bNovelURL.hashCode()
-				) {
-					setContentTitle(name)
-					setLargeIcon(bitmap)
-					setNotOngoing()
-					addReportErrorAction(applicationContext, 2000 + bNovelURL.hashCode(), e)
-				}
-				delay(5000)
-				return
-			}
+			val siteNovel = NovelEntity(
+				id = null,
+				url = backupNovelEntity.url,
+				extensionID = extensionID,
+				bookmarked = backupNovelEntity.bookmarked,
+				loaded = backupNovelEntity.loaded,
+				title = backupNovelEntity.name,
+				imageURL = backupNovelEntity.imageURL,
+				description = backupNovelEntity.description,
+				language = backupNovelEntity.language,
+				genres = backupNovelEntity.genres,
+				authors = backupNovelEntity.authors,
+				artists = backupNovelEntity.artists,
+				tags = backupNovelEntity.tags,
+				status = backupNovelEntity.status
+			)
 
 			notify(R.string.restore_notification_content_novel_save) {
 				setContentTitle(name)
-				setLargeIcon(bitmap)
 			}
 			novelsRepo.insertReturnStripped(
-				siteNovel.asEntity(
-					link = bNovelURL,
-					extensionID = extensionID,
-				).copy(
-					bookmarked = true
-				)
+				siteNovel
 			)?.let { (id) ->
 				targetNovelID = id
 			}
 
 			notify(R.string.restore_notification_content_novel_chapters_save) {
 				setContentTitle(name)
-				setLargeIcon(bitmap)
 			}
 			try {
 				chaptersRepo.handleChapters(
 					novelID = targetNovelID,
 					extensionID = extensionID,
-					list = siteNovel.chapters.distinctBy { it.link }
+					list = backupNovelEntity.chapters.mapIndexed { index, chapter ->
+						Novel.Chapter(
+							title = chapter.name,
+							link = chapter.url,
+							release = chapter.releaseDate.orEmpty(),
+							order = chapter.order?.takeUnless { it.isNaN() } ?: index.toDouble()
+						)
+					}
 				)
 			} catch (e: Exception) {//TODO Specify
 				logE("Failed to handle chapters", e)
@@ -452,31 +414,26 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 			}
 			logI("Inserted new chapters")
 		} else {
-			// Get the novelID from the present novels, or just end this update
-			repoNovels.find { it.extensionID == extensionID && it.url == bNovelURL }?.id?.let { it ->
-				targetNovelID = it
-			} ?: run {
-				clearBitmap()
-				return
+			if (backupNovelEntity.bookmarked) {
+				novelsRepo.getNovel(targetNovelID)
+					?.copy(bookmarked = true)
+					?.let { novelsRepo.update(it) }
 			}
 		}
 
 		// if the ID is still -1, return
 		if (targetNovelID == -1) {
 			logE("Could not find novel, even after injecting, aborting")
-			clearBitmap()
 			return
 		}
 
 		notify(R.string.restore_notification_content_chapters_load)
 		{
 			setContentTitle(name)
-			setLargeIcon(bitmap)
 		}
 
 		// get the chapters
 		val repoChapters = chaptersRepo.getChapters(targetNovelID)
-
 
 		val chapterMap = buildMap {
 			bChapters.forEach { backupChapter ->
@@ -492,7 +449,6 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 		notify(R.string.restore_notification_content_settings_restore)
 		{
 			setContentTitle(name)
-			setLargeIcon(bitmap)
 			removeProgress()
 		}
 
@@ -513,6 +469,7 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 					showOnlyReadingStatusOf = bSettings.showOnlyReadingStatusOf,
 					showOnlyBookmarked = bSettings.showOnlyBookmarked,
 					showOnlyDownloaded = bSettings.showOnlyDownloaded,
+					showOnlyString = bSettings.showOnlyString,
 					reverseOrder = bSettings.reverseOrder,
 				)
 			)
@@ -523,6 +480,7 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 					showOnlyReadingStatusOf = bSettings.showOnlyReadingStatusOf,
 					showOnlyBookmarked = bSettings.showOnlyBookmarked,
 					showOnlyDownloaded = bSettings.showOnlyDownloaded,
+					showOnlyString = bSettings.showOnlyString,
 					reverseOrder = bSettings.reverseOrder,
 				)
 			)
@@ -573,10 +531,6 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 			}
 		}
 
-		loadImageJob.join() // Finish the image loading job
-
-		clearBitmap() // Remove data from bitmap
-
 		delay(500) // Delay things a bit
 	}
 
@@ -604,8 +558,8 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(RESTORE_WORK_ID).await()
@@ -645,16 +599,9 @@ class RestoreBackupWorker(appContext: Context, params: WorkerParameters) : Corou
 
 		private const val MESSAGE_LOG_JSON_OUTDATED = "BACKUP JSON MISMATCH"
 
-
 		/**
-		 * Path / name of file
+		 * URI of the backup file
 		 */
-		const val BACKUP_DATA_KEY = "BACKUP_NAME"
-
-		/**
-		 * If true, the [BACKUP_DATA_KEY] is a full path pointing to a specific file, other wise
-		 * it is an internal path
-		 */
-		const val BACKUP_DIR_KEY = "BACKUP_DIR"
+		const val BACKUP_URI_KEY = "BACKUP_URI"
 	}
 }

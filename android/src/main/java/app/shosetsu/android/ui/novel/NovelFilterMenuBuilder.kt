@@ -14,21 +14,27 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.R
 import app.shosetsu.android.common.enums.ChapterSortType
@@ -37,9 +43,8 @@ import app.shosetsu.android.common.enums.ChapterSortType.UPLOAD
 import app.shosetsu.android.common.enums.ReadingStatus.READ
 import app.shosetsu.android.common.enums.ReadingStatus.UNREAD
 import app.shosetsu.android.view.compose.pagerTabIndicatorOffset
+import app.shosetsu.android.view.compose.placeholder
 import app.shosetsu.android.view.uimodels.NovelSettingUI
-import app.shosetsu.android.viewmodel.abstracted.ANovelViewModel
-import com.google.accompanist.placeholder.material.placeholder
 import kotlinx.coroutines.launch
 
 /*
@@ -64,17 +69,26 @@ import kotlinx.coroutines.launch
  * 22 / 11 / 2020
  */
 
+@Preview
+@Composable
+fun PreviewNovelFilterMenuView() {
+	var setting by remember { mutableStateOf(NovelSettingUI(1)) }
+	NovelFilterMenuView(
+		novelSetting = setting,
+		updateNovelSetting = { setting = it }
+	)
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NovelFilterMenuView(
-	viewModel: ANovelViewModel
+	novelSetting: NovelSettingUI?,
+	updateNovelSetting: (NovelSettingUI) -> Unit,
 ) {
-	val pagerState = rememberPagerState()
 	val pages =
 		listOf(stringResource(R.string.filter), stringResource(R.string.sort))
+	val pagerState = rememberPagerState { pages.size }
 	val scope = rememberCoroutineScope()
-
-	val novelSetting by viewModel.novelSettingFlow.collectAsState(null)
 
 	Column {
 		TabRow(
@@ -100,12 +114,12 @@ fun NovelFilterMenuView(
 				)
 			}
 		}
-		HorizontalPager(pageCount = pages.size, state = pagerState) {
+		HorizontalPager(state = pagerState) {
 			when (it) {
 				0 -> NovelFilterMenuFilterContent(
 					novelSetting ?: NovelSettingUI(-1),
 					novelSetting == null,
-					updateNovelSetting = viewModel::updateNovelSetting
+					updateNovelSetting = updateNovelSetting
 				)
 
 				1 -> NovelFilterMenuSortContent(
@@ -113,7 +127,7 @@ fun NovelFilterMenuView(
 					(novelSetting ?: NovelSettingUI(-1)).reverseOrder,
 					novelSetting == null,
 					update = { a, b ->
-						viewModel.updateNovelSetting(
+						updateNovelSetting(
 							(novelSetting ?: NovelSettingUI(-1)).copy(
 								sortType = a,
 								reverseOrder = b
@@ -124,6 +138,19 @@ fun NovelFilterMenuView(
 			}
 		}
 	}
+}
+
+@Preview
+@Composable
+fun PreviewNovelFilterMenuFilterContent() {
+	var setting by remember { mutableStateOf(NovelSettingUI(1)) }
+	NovelFilterMenuFilterContent(
+		settings = setting,
+		isLoading = false,
+		updateNovelSetting = {
+			setting = it
+		}
+	)
 }
 
 @Composable
@@ -203,7 +230,41 @@ fun NovelFilterMenuFilterContent(
 				)
 			},
 		)
+
+		var onlyString by remember { mutableStateOf(settings.showOnlyString) }
+		OutlinedTextField(
+			onlyString.orEmpty(),
+			onValueChange = {
+				onlyString = it
+				updateNovelSetting(
+					settings.copy(
+						showOnlyString = it.takeIf { it.isNotBlank() }?.trim()
+					)
+				)
+			},
+			label = {
+				Text(stringResource(R.string.text_filter))
+			},
+			singleLine = true,
+			modifier = Modifier
+				.padding(horizontal = 32.dp, vertical = 8.dp)
+				.fillMaxWidth(),
+		)
 	}
+}
+
+@Preview
+@Composable
+fun PreviewNovelFilterMenuFilterRadioButtonItem() {
+	var selected by remember { mutableStateOf(false) }
+	NovelFilterMenuFilterRadioButtonItem(
+		title = "Test",
+		selected = selected,
+		isLoading = false,
+		onClick = {
+			selected = !selected
+		}
+	)
 }
 
 @Composable
@@ -233,6 +294,21 @@ fun NovelFilterMenuFilterRadioButtonItem(
 	}
 }
 
+@Preview
+@Composable
+fun PreviewNovelFilterMenuFilterCheckboxItem() {
+	var checked by remember { mutableStateOf(false) }
+
+	NovelFilterMenuFilterCheckboxItem(
+		title = "Test",
+		isChecked = checked,
+		isLoading = false,
+		onCheckedChange = {
+			checked = it
+		}
+	)
+}
+
 @Composable
 fun NovelFilterMenuFilterCheckboxItem(
 	title: String,
@@ -260,6 +336,20 @@ fun NovelFilterMenuFilterCheckboxItem(
 		)
 		Text(title)
 	}
+}
+
+@Preview
+@Composable
+fun PreviewNovelFilterMenuSortContent() {
+	var reversed by remember { mutableStateOf(false) }
+	NovelFilterMenuSortContent(
+		chapterSortType = SOURCE,
+		isReversed = reversed,
+		isLoading = false,
+		update = { newType, newReversed ->
+			reversed = newReversed
+		}
+	)
 }
 
 @Composable
@@ -305,6 +395,20 @@ fun NovelFilterMenuSortContent(
 	}
 }
 
+@Preview
+@Composable
+fun PreviewNovelFilterMenuSortItemContent() {
+	var type by remember { mutableStateOf(SOURCE) }
+	NovelFilterMenuSortItemContent(
+		name = "Test",
+		state = type,
+		expectedState = SOURCE,
+		reversed = false,
+		isPlaceholder = false,
+		setIsSortReversed = { },
+		setSortType = { type = it }
+	)
+}
 
 @Composable
 fun NovelFilterMenuSortItemContent(
@@ -336,13 +440,7 @@ fun NovelFilterMenuSortItemContent(
 			Box(modifier = Modifier.size(32.dp)) {
 				if (isExpected)
 					Icon(
-						painterResource(
-							if (reversed) {
-								R.drawable.expand_less
-							} else {
-								R.drawable.expand_more
-							}
-						),
+						if (reversed) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
 						null,
 						modifier = Modifier.align(Alignment.Center)
 					)

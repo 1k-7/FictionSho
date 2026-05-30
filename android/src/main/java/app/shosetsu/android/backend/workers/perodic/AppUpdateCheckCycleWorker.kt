@@ -12,7 +12,6 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
-import androidx.work.await
 import app.shosetsu.android.backend.workers.CoroutineWorkerManager
 import app.shosetsu.android.backend.workers.onetime.AppUpdateCheckWorker
 import app.shosetsu.android.common.SettingKey.AppUpdateCycle
@@ -22,6 +21,7 @@ import app.shosetsu.android.common.consts.LogConstants
 import app.shosetsu.android.common.consts.WorkerTags.APP_UPDATE_CYCLE_WORK_ID
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.logI
+import app.shosetsu.android.common.utils.await
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import org.kodein.di.instance
 import java.util.concurrent.TimeUnit
@@ -59,22 +59,32 @@ class AppUpdateCheckCycleWorker(
 			WorkInfo.State.ENQUEUED -> {
 				logI("AppUpdaterCheck is waiting to check, ignoring")
 			}
+
 			WorkInfo.State.RUNNING -> {
 				logI("AppUpdaterCheck is running, ignoring")
 			}
+
 			WorkInfo.State.SUCCEEDED -> {
 				logI("AppUpdaterCheck has completed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.FAILED -> {
 				logI("Previous AppUpdaterCheck has failed, starting again")
 				manager.start()
 			}
+
 			WorkInfo.State.BLOCKED -> {
 				logI("Previous AppUpdaterCheck is blocked, ignoring")
 			}
+
 			WorkInfo.State.CANCELLED -> {
 				logI("Previous AppUpdaterCheck was cancelled, starting again")
+				manager.start()
+			}
+
+			null -> {
+				logI("Previous AppUpdaterCheck is null, starting again")
 				manager.start()
 			}
 		}
@@ -108,8 +118,8 @@ class AppUpdateCheckCycleWorker(
 			false
 		}
 
-		override suspend fun getWorkerState(index: Int): WorkInfo.State =
-			getWorkerInfoList()[index].state
+		override suspend fun getWorkerState(index: Int) =
+			getWorkerInfoList().getOrNull(index)?.state
 
 		override suspend fun getWorkerInfoList(): List<WorkInfo> =
 			workerManager.getWorkInfosForUniqueWork(APP_UPDATE_CYCLE_WORK_ID).await()
@@ -126,7 +136,7 @@ class AppUpdateCheckCycleWorker(
 				logI(LogConstants.SERVICE_NEW)
 				workerManager.enqueueUniquePeriodicWork(
 					APP_UPDATE_CYCLE_WORK_ID,
-					ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+					ExistingPeriodicWorkPolicy.UPDATE,
 					PeriodicWorkRequestBuilder<AppUpdateCheckCycleWorker>(
 						appUpdateCycle(),
 						TimeUnit.HOURS
@@ -141,10 +151,8 @@ class AppUpdateCheckCycleWorker(
 					).build()
 				)
 				logI(
-					"Worker State ${
-						workerManager.getWorkInfosForUniqueWork(
-							APP_UPDATE_CYCLE_WORK_ID
-						).await()[0].state
+					"AppUpdateCheckCycleWorker State ${
+						workerManager.getWorkInfosForUniqueWork(APP_UPDATE_CYCLE_WORK_ID).await()[0].state
 					}"
 				)
 			}
@@ -155,5 +163,4 @@ class AppUpdateCheckCycleWorker(
 		 */
 		override fun stop(): Operation = workerManager.cancelUniqueWork(APP_UPDATE_CYCLE_WORK_ID)
 	}
-
 }

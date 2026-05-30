@@ -18,6 +18,8 @@ package app.shosetsu.android.viewmodel.impl
  */
 
 import androidx.compose.ui.state.ToggleableState
+import app.shosetsu.android.R
+import app.shosetsu.android.common.OfflineException
 import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.enums.InclusionState
 import app.shosetsu.android.common.enums.InclusionState.EXCLUDE
@@ -29,9 +31,14 @@ import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.utils.copy
 import app.shosetsu.android.domain.model.local.LibraryFilterState
 import app.shosetsu.android.domain.usecases.IsOnlineUseCase
+import app.shosetsu.android.domain.usecases.SetNovelPinUseCase
 import app.shosetsu.android.domain.usecases.SetNovelsCategoriesUseCase
-import app.shosetsu.android.domain.usecases.ToggleNovelPinUseCase
-import app.shosetsu.android.domain.usecases.load.*
+import app.shosetsu.android.domain.usecases.load.LoadLibraryFilterSettingsUseCase
+import app.shosetsu.android.domain.usecases.load.LoadLibraryUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIBadgeToastUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIColumnsHUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUIColumnsPUseCase
+import app.shosetsu.android.domain.usecases.load.LoadNovelUITypeUseCase
 import app.shosetsu.android.domain.usecases.settings.SetNovelUITypeUseCase
 import app.shosetsu.android.domain.usecases.start.StartUpdateWorkerUseCase
 import app.shosetsu.android.domain.usecases.update.UpdateBookmarkedNovelUseCase
@@ -44,7 +51,16 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import java.util.Locale.getDefault as LGD
 
 /**
@@ -65,7 +81,7 @@ class LibraryViewModel(
 	private val loadNovelUIBadgeToast: LoadNovelUIBadgeToastUseCase,
 	private val setNovelUITypeUseCase: SetNovelUITypeUseCase,
 	private val setNovelsCategoriesUseCase: SetNovelsCategoriesUseCase,
-	private val toggleNovelPin: ToggleNovelPinUseCase,
+	private val setNovelPin: SetNovelPinUseCase,
 	private val loadLibraryFilterSettings: LoadLibraryFilterSettingsUseCase,
 	private val _updateLibraryFilterState: UpdateLibraryFilterStateUseCase
 ) : ALibraryViewModel() {
@@ -158,6 +174,8 @@ class LibraryViewModel(
 	}
 
 	private val librarySourceFlow: Flow<LibraryUI> by lazy { loadLibrary() }
+	override val error = MutableSharedFlow<Throwable>()
+
 	override val isCategoryDialogOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
 	override fun showCategoryDialog() {
 		isCategoryDialogOpen.value = true
@@ -173,10 +191,20 @@ class LibraryViewModel(
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
 	}
 
-	override val hasSelection: StateFlow<Boolean> by lazy {
+	override val selectionCount: StateFlow<Int> by lazy {
 		selectedNovels.mapLatest { map ->
-			map.values.any { it.any { it.value } }
-		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
+			map.values.sumOf { subMap -> subMap.count { it.value } }
+		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
+	}
+
+	override val selectedPinCount: StateFlow<Int> by lazy {
+		liveData.mapLatest { ui ->
+			ui?.novels
+				.orEmpty()
+				.flatMap { it.value }
+				.distinctBy { it.id }
+				.count { it.isSelected && it.pinned }
+		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Lazily, 0)
 	}
 
 	override val genresFlow: Flow<ImmutableList<String>> by lazy {
@@ -320,8 +348,13 @@ class LibraryViewModel(
 		ArrayList<String>().apply {
 			list.novels.flatMap { it.value }.distinctBy { it.id }.forEach { ui ->
 				strip(ui).forEach { key ->
-					if (!contains(key.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LGD()) else it.toString() }) && key.isNotBlank()) {
-						add(key.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LGD()) else it.toString() })
+					val modifiedKey = key.replaceFirstChar {
+						if (it.isLowerCase()) {
+							it.titlecase(LGD())
+						} else it.toString()
+					}
+					if (!contains(modifiedKey) && key.isNotBlank()) {
+						add(modifiedKey)
 					}
 				}
 			}
@@ -342,8 +375,8 @@ class LibraryViewModel(
 				result = when (inclusionState) {
 					INCLUDE ->
 						result.copy(
-							novels = result.novels.mapValues {
-								it.value.filter { novelUI ->
+							novels = result.novels.mapValues { novel ->
+								novel.value.filter { novelUI ->
 									against(novelUI).any { g ->
 										g.replaceFirstChar {
 											if (it.isLowerCase()) it.titlecase(
@@ -354,10 +387,11 @@ class LibraryViewModel(
 								}.toImmutableList()
 							}.toImmutableMap()
 						)
+
 					EXCLUDE ->
 						result.copy(
-							novels = result.novels.mapValues {
-								it.value.filterNot { novelUI ->
+							novels = result.novels.mapValues { novel ->
+								novel.value.filterNot { novelUI ->
 									against(novelUI).any { g ->
 										g.replaceFirstChar {
 											if (it.isLowerCase()) it.titlecase(
@@ -406,8 +440,8 @@ class LibraryViewModel(
 			novelResult.let { library ->
 				if (reversed)
 					library.copy(
-						novels = library.novels.mapValues {
-							it.value.sortedBy { !it.pinned }.toImmutableList()
+						novels = library.novels.mapValues { novel ->
+							novel.value.sortedBy { !it.pinned }.toImmutableList()
 						}.toImmutableMap()
 					)
 				else library
@@ -417,8 +451,8 @@ class LibraryViewModel(
 	private fun Flow<LibraryUI>.combineFilter() =
 		combine(queryFlow) { library, query ->
 			library.copy(
-				novels = library.novels.mapValues {
-					it.value.filter { it.title.contains(query, ignoreCase = true) }
+				novels = library.novels.mapValues { novel ->
+					novel.value.filter { it.title.contains(query, ignoreCase = true) }
 						.toImmutableList()
 				}.toImmutableMap()
 			)
@@ -442,20 +476,24 @@ class LibraryViewModel(
 		combine(novelSortTypeFlow) { library, sortType ->
 			library.copy(
 				novels = when (sortType) {
-					NovelSortType.BY_TITLE -> library.novels.mapValues {
-						it.value.sortedBy { it.title }.toImmutableList()
+					NovelSortType.BY_TITLE -> library.novels.mapValues { (_, value) ->
+						value.sortedBy { it.title }.toImmutableList()
 					}
-					NovelSortType.BY_UNREAD_COUNT -> library.novels.mapValues {
-						it.value.sortedBy { it.unread }.toImmutableList()
+
+					NovelSortType.BY_UNREAD_COUNT -> library.novels.mapValues { (_, value) ->
+						value.sortedBy { it.unread }.toImmutableList()
 					}
-					NovelSortType.BY_ID -> library.novels.mapValues {
-						it.value.sortedBy { it.id }.toImmutableList()
+
+					NovelSortType.BY_ID -> library.novels.mapValues { (_, value) ->
+						value.sortedBy { it.id }.toImmutableList()
 					}
-					NovelSortType.BY_UPDATED -> library.novels.mapValues {
-						it.value.sortedBy { it.lastUpdate }.toImmutableList()
+
+					NovelSortType.BY_UPDATED -> library.novels.mapValues { (_, value) ->
+						value.sortedBy { it.lastUpdate }.toImmutableList()
 					}
-					NovelSortType.BY_READ_TIME -> library.novels.mapValues {
-						it.value.sortedBy { it -> it.readTime }.toImmutableList()
+
+					NovelSortType.BY_READ_TIME -> library.novels.mapValues { (_, value) ->
+						value.sortedBy { it.readTime }.toImmutableList()
 					}
 				}.toImmutableMap()
 			)
@@ -467,13 +505,14 @@ class LibraryViewModel(
 				sortType?.let {
 					when (sortType) {
 						INCLUDE -> list.copy(
-							novels = list.novels.mapValues {
-								it.value.filter { it.unread > 0 }.toImmutableList()
+							novels = list.novels.mapValues { novel ->
+								novel.value.filter { it.unread > 0 }.toImmutableList()
 							}.toImmutableMap()
 						)
+
 						EXCLUDE -> list.copy(
-							novels = list.novels.mapValues {
-								it.value.filterNot { it.unread > 0 }.toImmutableList()
+							novels = list.novels.mapValues { novel ->
+								novel.value.filterNot { it.unread > 0 }.toImmutableList()
 							}.toImmutableMap()
 						)
 					}
@@ -487,13 +526,14 @@ class LibraryViewModel(
 				sortType?.let {
 					when (sortType) {
 						INCLUDE -> list.copy(
-							novels = list.novels.mapValues {
-								it.value.filter { it.downloaded > 0 }.toImmutableList()
+							novels = list.novels.mapValues { novel ->
+								novel.value.filter { it.downloaded > 0 }.toImmutableList()
 							}.toImmutableMap()
 						)
+
 						EXCLUDE -> list.copy(
-							novels = list.novels.mapValues {
-								it.value.filterNot { it.downloaded > 0 }.toImmutableList()
+							novels = list.novels.mapValues { novel ->
+								novel.value.filterNot { it.downloaded > 0 }.toImmutableList()
 							}.toImmutableMap()
 						)
 					}
@@ -505,7 +545,11 @@ class LibraryViewModel(
 	override fun isOnline(): Boolean = isOnlineUseCase()
 
 	override fun startUpdateManager(categoryID: Int) {
-		startUpdateWorkerUseCase(categoryID, true)
+		if (isOnline()) {
+			startUpdateWorkerUseCase(categoryID, true)
+		} else {
+			error.tryEmit(OfflineException(R.string.generic_error_cannot_update_library_offline))
+		}
 	}
 
 	override fun removeSelectedFromLibrary() {
@@ -523,17 +567,13 @@ class LibraryViewModel(
 		}
 	}
 
-	override fun getSelectedIds(): Flow<IntArray> = flow {
-		val ints = selectedNovels.value
-			.flatMap { (_, map) ->
+	override val selectedIds: StateFlow<List<Int>> =
+		selectedNovels.map { it ->
+			it.flatMap { (_, map) ->
 				map.entries.filter { it.value }
 					.map { it.key }
 			}
-			.toIntArray()
-		if (ints.isEmpty()) return@flow
-		clearSelected()
-		emit(ints)
-	}
+		}.stateIn(viewModelScopeIO, SharingStarted.Lazily, emptyList())
 
 	override fun deselectAll() {
 		launchIO {
@@ -663,7 +703,7 @@ class LibraryViewModel(
 
 	override fun setCategories(categories: IntArray) {
 		launchIO {
-			val selected = getSelectedIds().first()
+			val selected = selectedIds.first()
 			setNovelsCategoriesUseCase(selected, categories)
 		}
 	}
@@ -722,7 +762,7 @@ class LibraryViewModel(
 		activeCategory.value = category
 	}
 
-	override fun togglePinSelected() {
+	override fun pinSelected() {
 		launchIO {
 			val selected = liveData.value?.novels
 				.orEmpty()
@@ -731,7 +771,30 @@ class LibraryViewModel(
 				.filter { it.isSelected }
 
 			clearSelected()
-			toggleNovelPin(selected)
+			setNovelPin(selected, true)
 		}
+	}
+
+	override fun unpinSelected() {
+		launchIO {
+			val selected = liveData.value?.novels
+				.orEmpty()
+				.flatMap { it.value }
+				.distinctBy { it.id }
+				.filter { it.isSelected }
+
+			clearSelected()
+			setNovelPin(selected, false)
+		}
+	}
+
+	override val isFilterMenuVisible = MutableStateFlow(false)
+
+	override fun showFilterMenu() {
+		isFilterMenuVisible.value = true
+	}
+
+	override fun hideFilterMenu() {
+		isFilterMenuVisible.value = false
 	}
 }

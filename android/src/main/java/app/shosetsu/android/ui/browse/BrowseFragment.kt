@@ -17,66 +17,91 @@ package app.shosetsu.android.ui.browse
  * along with shosetsu.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import android.os.Bundle
-import android.view.*
-import androidx.appcompat.widget.SearchView
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import android.content.Intent
+import android.provider.Settings
+import androidx.annotation.StringRes
+import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ManageSearch
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import androidx.core.os.bundleOf
-import androidx.core.view.MenuProvider
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.navOptions
 import app.shosetsu.android.R
-import app.shosetsu.android.activity.MainActivity
-import app.shosetsu.android.common.consts.BROWSE_HELP_URL
-import app.shosetsu.android.common.consts.BundleKeys
-import app.shosetsu.android.common.consts.BundleKeys.BUNDLE_EXTENSION
-import app.shosetsu.android.common.ext.*
+import app.shosetsu.android.common.OfflineException
+import app.shosetsu.android.common.consts.URL_HELP_BROWSE
+import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.domain.model.local.ExtensionInstallOptionEntity
-import app.shosetsu.android.view.ComposeBottomSheetDialog
-import app.shosetsu.android.view.compose.*
-import app.shosetsu.android.view.controller.ShosetsuFragment
-import app.shosetsu.android.view.controller.base.ExtendedFABController
-import app.shosetsu.android.view.controller.base.ExtendedFABController.EFabMaintainer
-import app.shosetsu.android.view.controller.base.HomeFragment
-import app.shosetsu.android.view.controller.base.syncFABWithCompose
+import app.shosetsu.android.ui.library.SearchAction
+import app.shosetsu.android.view.BottomSheetDialog
+import app.shosetsu.android.view.compose.AnimatedRefresh
+import app.shosetsu.android.view.compose.ErrorAction
+import app.shosetsu.android.view.compose.ErrorContent
+import app.shosetsu.android.view.compose.HelpButton
+import app.shosetsu.android.view.compose.ImageLoadingError
+import app.shosetsu.android.view.compose.SimpleIconButton
+import app.shosetsu.android.view.compose.placeholder
+import app.shosetsu.android.view.compose.rememberFakePullRefreshState
 import app.shosetsu.android.view.uimodels.model.BrowseExtensionUI
 import app.shosetsu.android.viewmodel.abstracted.ABrowseViewModel
 import app.shosetsu.lib.Version
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import com.google.accompanist.placeholder.material.placeholder
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.launch
 
 /**
  * shosetsu
@@ -84,187 +109,97 @@ import kotlinx.collections.immutable.toImmutableList
  *
  * @author github.com/doomsdayrs
  */
-class BrowseFragment : ShosetsuFragment(),
-	ExtendedFABController, HomeFragment, MenuProvider {
-	override val viewTitleRes: Int = R.string.browse
-
-	private var bsg: BottomSheetDialog? = null
-
-	/***/
-	val viewModel: ABrowseViewModel by viewModel()
-
-	private var fab: EFabMaintainer? = null
-
-	override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
-		inflater.inflate(R.menu.toolbar_browse, menu)
-	}
-
-	override fun onPrepareMenu(menu: Menu) {
-		(menu.findItem(R.id.search)?.actionView as? SearchView)?.apply {
-			//setOnQueryTextListener(BrowseSearchQuery(findNavController()))
-			isSubmitButtonEnabled = false
-
-			setOnQueryTextListener(BrowseFilterExtensions(viewModel))
-		}
-	}
-
-	private fun installExtension(
-		extension: BrowseExtensionUI,
-		option: ExtensionInstallOptionEntity
-	) {
-		if (!extension.isInstalled) {
-			if (viewModel.isOnline()) {
-				viewModel.installExtension(extension, option)
-			} else {
-				displayOfflineSnackBar(R.string.fragment_browse_snackbar_offline_no_install_extension)
-			}
-		}
-	}
-
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedViewState: Bundle?
-	): View {
-		activity?.addMenuProvider(this, viewLifecycleOwner)
-		setViewTitle()
-		return ComposeView {
-			BrowseView(
-				viewModel,
-				onRefresh = ::onRefresh,
-				installExtension = ::installExtension,
-				openCatalogue = ::openCatalogue,
-				openSettings = ::openSettings,
-				fab
-			)
-		}
-	}
-
-	private fun openSettings(entity: BrowseExtensionUI) {
-		viewModel.resetSearch()
-		findNavController().navigateSafely(
-			R.id.action_browseController_to_configureExtension,
-			bundleOf(BUNDLE_EXTENSION to entity.id),
-			navOptions = navOptions {
-				launchSingleTop = true
-				setShosetsuTransition()
-			}
-		)
-	}
-
-	private fun openCatalogue(entity: BrowseExtensionUI) {
-		// First check if the user is online or not
-		if (viewModel.isOnline()) {
-			// If the extension is installed, push to it, otherwise prompt the user to install
-			if (entity.isInstalled) {
-				viewModel.resetSearch()
-				findNavController().navigateSafely(
-					R.id.action_browseController_to_catalogController,
-					bundleOf(
-						BUNDLE_EXTENSION to entity.id
-					),
-					navOptions = navOptions {
-						launchSingleTop = true
-						setShosetsuTransition()
-					}
-				)
-			} else makeSnackBar(R.string.fragment_browse_snackbar_not_installed)?.setAction(
-				R.string.install
-			) {
-				// TODO install
-			}?.show()
-		} else displayOfflineSnackBar(R.string.fragment_browse_snackbar_offline_no_extension)
-
-	}
-
-	override fun onMenuItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-		R.id.help -> {
-			openHelpMenu()
-			true
-		}
-
-		R.id.global_search -> {
-			findNavController().navigate(
-				R.id.action_browseController_to_searchController,
-				bundleOf(BundleKeys.BUNDLE_QUERY to null),
-				navOptions {
-					setShosetsuTransition()
-				}
-			)
-			true
-		}
-
-		R.id.browse_import -> {
-			makeSnackBar(R.string.regret)?.show()
-			true
-		}
-
-		else -> false
-	}
-
-	private fun openHelpMenu() {
-		activity?.openInWebView(BROWSE_HELP_URL)
-	}
-
-	private fun onRefresh() {
-		if (viewModel.isOnline())
-			viewModel.refresh()
-		else displayOfflineSnackBar(R.string.fragment_browse_snackbar_offline_no_update_extension)
-	}
-
-	override fun manipulateFAB(fab: EFabMaintainer) {
-		this.fab = fab
-		fab.setOnClickListener {
-			//bottomMenuRetriever.invoke()?.show()
-			if (bsg == null)
-				bsg = ComposeBottomSheetDialog(
-					this.requireView().context,
-					this,
-					activity as MainActivity
-				)
-			if (bsg?.isShowing == false) {
-				bsg?.apply {
-					setContentView(
-						ComposeView(requireView().context).apply {
-							setContent {
-								ShosetsuCompose {
-									BrowseControllerFilterMenu(viewModel)
-								}
-							}
-						}
-					)
-
-				}?.show()
-			}
-		}
-		fab.setText(R.string.filter)
-		fab.setIconResource(R.drawable.filter)
-	}
-}
 
 @Composable
 fun BrowseView(
-	viewModel: ABrowseViewModel = viewModelDi(),
-	onRefresh: () -> Unit,
-	installExtension: (BrowseExtensionUI, ExtensionInstallOptionEntity) -> Unit,
-	openCatalogue: (BrowseExtensionUI) -> Unit,
-	openSettings: (BrowseExtensionUI) -> Unit,
-	fab: EFabMaintainer?
+	openCatalogue: (extensionId: Int) -> Unit,
+	openSettings: (extensionId: Int) -> Unit,
+	openRepositories: () -> Unit,
+	openSearch: () -> Unit,
+	drawerIcon: @Composable () -> Unit
 ) {
-	ShosetsuCompose {
-		val entities by viewModel.liveData.collectAsState()
-		BrowseContent(
-			entities,
-			refresh = {
-				onRefresh()
-			},
-			installExtension = installExtension,
-			update = viewModel::updateExtension,
-			openCatalogue = openCatalogue,
-			openSettings = openSettings,
-			cancelInstall = viewModel::cancelInstall,
-			fab
+	val viewModel: ABrowseViewModel = viewModelDi()
+
+	val query by viewModel.searchTermLive.collectAsState()
+	val entities by viewModel.liveData.collectAsState()
+	val isOnline by viewModel.isOnline.collectAsState(false)
+	val error by viewModel.error.collectAsState(null)
+	val isFilterMenuVisible by viewModel.isFilterMenuVisible.collectAsState()
+
+	val hostState = remember { SnackbarHostState() }
+	val context = LocalContext.current
+	val scope = rememberCoroutineScope()
+
+	suspend fun offlineMessage(@StringRes message: Int) {
+		val result = hostState.showSnackbar(
+			context.getString(message),
+			duration = SnackbarDuration.Long,
+			actionLabel = context.getString(R.string.generic_wifi_settings)
 		)
+		if (result == SnackbarResult.ActionPerformed) {
+			context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+		}
+	}
+
+	LaunchedEffect(error) {
+		if (error != null) {
+			when (error) {
+				is OfflineException -> {
+					offlineMessage((error as OfflineException).messageRes)
+				}
+
+				else -> {
+					hostState.showSnackbar(
+						error?.message ?: context.getString(R.string.error)
+					)
+				}
+			}
+		}
+	}
+
+	BrowseContent(
+		entities = entities,
+		refresh = viewModel::refresh,
+		openRepositories = openRepositories,
+		installExtension = { extension, option ->
+			viewModel.installExtension(extension, option)
+		},
+		update = viewModel::updateExtension,
+		openCatalogue = {
+			if (isOnline) {
+				if (it.isInstalled) {
+					viewModel.resetSearch()
+					openCatalogue(it.id)
+				} else {
+					scope.launch {
+						hostState.showSnackbar(
+							context.getString(R.string.fragment_browse_snackbar_not_installed)
+						)
+					}
+				}
+			} else {
+				scope.launch {
+					offlineMessage(R.string.fragment_browse_snackbar_offline_no_extension)
+				}
+			}
+		},
+		openSettings = {
+			viewModel.resetSearch()
+			openSettings(it.id)
+		},
+		cancelInstall = viewModel::cancelInstall,
+		hostState = hostState,
+		onOpenFilter = viewModel::showFilterMenu,
+		onOpenSearch = openSearch,
+		query = query,
+		onSetQuery = viewModel::setSearch,
+		drawerIcon = drawerIcon
+	)
+
+	if (isFilterMenuVisible) {
+		BottomSheetDialog(viewModel::hideFilterMenu) {
+			BrowseControllerFilterMenu(viewModel)
+		}
 	}
 }
 
@@ -272,93 +207,149 @@ fun BrowseView(
 @Composable
 fun PreviewBrowseContent() {
 	BrowseContent(
+		query = "",
+		onSetQuery = {},
 		entities =
-		List(10) {
-			BrowseExtensionUI(
-				it,
-				"Fake a b c",
-				"",
-				"en",
-				installOptions = null,
-				isInstalled = true,
-				installedVersion = Version(1, 1, 1),
-				installedRepo = 1,
-				isUpdateAvailable = false,
-				updateVersion = Version(1, 2, 1),
-				isInstalling = false
-			)
-		}.toImmutableList(),
+			List(10) {
+				BrowseExtensionUI(
+					it,
+					"Fake a b c",
+					"",
+					"en",
+					installOptions = null,
+					isInstalled = true,
+					installedVersion = Version(1, 1, 1),
+					installedRepo = 1,
+					isUpdateAvailable = false,
+					updateVersion = Version(1, 2, 1),
+					isInstalling = false
+				)
+			}.toImmutableList(),
+		{},
 		{},
 		{ _, _ -> },
 		{},
 		{},
 		{},
 		{},
-		fab = null
+		hostState = remember { SnackbarHostState() },
+		onOpenFilter = {},
+		onOpenSearch = {},
+		drawerIcon = {}
 	)
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun BrowseContent(
+	query: String,
+	onSetQuery: (String) -> Unit,
 	entities: ImmutableList<BrowseExtensionUI>?,
 	refresh: () -> Unit,
+	openRepositories: () -> Unit,
 	installExtension: (BrowseExtensionUI, ExtensionInstallOptionEntity) -> Unit,
 	update: (BrowseExtensionUI) -> Unit,
 	openCatalogue: (BrowseExtensionUI) -> Unit,
 	openSettings: (BrowseExtensionUI) -> Unit,
 	cancelInstall: (BrowseExtensionUI) -> Unit,
-	fab: EFabMaintainer?
+	hostState: SnackbarHostState,
+	onOpenFilter: () -> Unit,
+	onOpenSearch: () -> Unit,
+	drawerIcon: @Composable () -> Unit
 ) {
 	val (isRefreshing, pullRefreshState) = rememberFakePullRefreshState(refresh)
 
-	Box(Modifier.pullRefresh(pullRefreshState)) {
-		if (!entities.isNullOrEmpty()) {
-			val state = rememberLazyListState()
-			if (fab != null)
-				syncFABWithCompose(state, fab)
-			LazyColumn(
-				modifier = Modifier.fillMaxSize(),
-				contentPadding = PaddingValues(
-					bottom = 198.dp,
-					top = 4.dp,
-					start = 8.dp,
-					end = 8.dp
-				),
-				state = state,
-				verticalArrangement = Arrangement.spacedBy(4.dp)
-			) {
-				items(entities) { entity ->
-					BrowseExtensionContent(
-						entity,
-						install = {
-							installExtension(entity, it)
+	Scaffold(
+		topBar = {
+			TopAppBar(
+				title = {
+					Text(stringResource(R.string.browse))
+				},
+				scrollBehavior = enterAlwaysScrollBehavior(),
+				actions = {
+					SearchAction(
+						query = query,
+						onSearch = onSetQuery,
+						icon = Icons.AutoMirrored.Outlined.ManageSearch
+					)
+					SimpleIconButton(Icons.Default.Search, stringResource(R.string.global_search), onOpenSearch)
+					HelpButton(URL_HELP_BROWSE)
+				},
+				navigationIcon = drawerIcon
+			)
+		},
+		snackbarHost = {
+			SnackbarHost(hostState)
+		},
+		floatingActionButton = {
+			ExtendedFloatingActionButton(
+				text = {
+					Text(stringResource(R.string.filter))
+				},
+				icon = {
+					Icon(Icons.Outlined.FilterList, stringResource(R.string.filter))
+				},
+				onClick = onOpenFilter
+			)
+		},
+	) { padding ->
+		Box(
+			Modifier
+				.pullRefresh(pullRefreshState)
+				.padding(padding)
+		) {
+			if (!entities.isNullOrEmpty()) {
+				val state = rememberLazyListState()
+				LazyColumn(
+					modifier = Modifier.fillMaxSize(),
+					contentPadding = PaddingValues(
+						bottom = 198.dp,
+						top = 4.dp,
+					),
+					state = state,
+					verticalArrangement = Arrangement.spacedBy(4.dp)
+				) {
+					items(entities) { entity ->
+						BrowseExtensionContent(
+							entity,
+							install = {
+								installExtension(entity, it)
+							},
+							update = {
+								update(entity)
+							},
+							openCatalogue = {
+								openCatalogue(entity)
+							},
+							openSettings = {
+								openSettings(entity)
+							},
+							cancelInstall = {
+								cancelInstall(entity)
+							}
+						)
+					}
+				}
+			} else {
+				ErrorContent(
+					R.string.empty_browse_message,
+					actions = arrayOf(
+						ErrorAction(R.string.empty_browse_refresh_action) {
+							refresh()
 						},
-						update = {
-							update(entity)
-						},
-						openCatalogue = {
-							openCatalogue(entity)
-						},
-						openSettings = {
-							openSettings(entity)
-						},
-						cancelInstall = {
-							cancelInstall(entity)
+						ErrorAction(R.string.repositories) {
+							openRepositories()
 						}
 					)
-				}
+				)
 			}
-		} else if (entities != null && entities.isEmpty()) {
-			ErrorContent(
-				R.string.empty_browse_message,
-				ErrorAction(R.string.empty_browse_refresh_action) {
-					refresh()
-				}
+
+			PullRefreshIndicator(
+				isRefreshing,
+				pullRefreshState,
+				Modifier.align(Alignment.TopCenter)
 			)
 		}
-
-		PullRefreshIndicator(isRefreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
 	}
 }
 
@@ -389,12 +380,7 @@ fun PreviewBrowseExtensionContent() {
 	)
 }
 
-@OptIn(
-	ExperimentalMaterial3Api::class,
-	androidx.compose.foundation.ExperimentalFoundationApi::class,
-	androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class,
-	androidx.compose.ui.unit.ExperimentalUnitApi::class
-)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationGraphicsApi::class)
 @Composable
 fun BrowseExtensionContent(
 	item: BrowseExtensionUI,
@@ -404,182 +390,169 @@ fun BrowseExtensionContent(
 	openSettings: () -> Unit,
 	cancelInstall: () -> Unit
 ) {
-	Card(
-		onClick = openCatalogue,
-		shape = RoundedCornerShape(16.dp)
+	Column(
+		Modifier
+			.clickable(onClick = openCatalogue)
+			.padding(horizontal = 8.dp)
 	) {
-		Column {
+		Row(
+			modifier = Modifier
+				.fillMaxWidth()
+				.padding(end = 8.dp),
+			horizontalArrangement = Arrangement.SpaceBetween,
+			verticalAlignment = Alignment.CenterVertically
+		) {
 			Row(
-				modifier = Modifier
-					.fillMaxWidth()
-					.padding(end = 8.dp),
-				horizontalArrangement = Arrangement.SpaceBetween,
-				verticalAlignment = Alignment.CenterVertically
+				verticalAlignment = Alignment.CenterVertically,
 			) {
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-				) {
-					if (item.imageURL.isNotEmpty()) {
-						SubcomposeAsyncImage(
-							ImageRequest.Builder(LocalContext.current)
-								.data(item.imageURL)
-								.crossfade(true)
-								.build(),
-							contentDescription = stringResource(R.string.fragment_browse_ext_icon_desc),
-							modifier = Modifier.size(64.dp),
-							error = {
-								Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
-									ImageLoadingError(
-										Modifier
-											.size(52.dp)
-											.clip(MaterialTheme.shapes.extraSmall)
-									)
-								}
-							},
-							loading = {
-								Box(Modifier.placeholder(true))
+				if (item.imageURL.isNotEmpty()) {
+					SubcomposeAsyncImage(
+						ImageRequest.Builder(LocalContext.current)
+							.data(item.imageURL)
+							.crossfade(true)
+							.build(),
+						contentDescription = stringResource(R.string.fragment_browse_ext_icon_desc),
+						modifier = Modifier.size(64.dp),
+						error = {
+							Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
+								ImageLoadingError(
+									Modifier
+										.size(52.dp)
+										.clip(MaterialTheme.shapes.extraSmall)
+								)
 							}
-						)
-					} else {
-						Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
-							ImageLoadingError(
-								Modifier
-									.size(52.dp)
-									.clip(MaterialTheme.shapes.extraSmall)
-							)
+						},
+						loading = {
+							Box(Modifier.placeholder(true))
 						}
+					)
+				} else {
+					Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
+						ImageLoadingError(
+							Modifier
+								.size(52.dp)
+								.clip(MaterialTheme.shapes.extraSmall)
+						)
 					}
-					Column(
-						modifier = Modifier.padding(start = 8.dp)
-					) {
-						Text(item.name)
-						Row {
-							Text(item.displayLang, fontSize = TextUnit(14f, TextUnitType.Sp))
+				}
+				Column(
+					modifier = Modifier.padding(start = 8.dp)
+				) {
+					Text(item.name)
+					Row {
+						Text(item.displayLang, fontSize = TextUnit(14f, TextUnitType.Sp))
 
-							if (item.isInstalled && item.installedVersion != null)
+						if (item.isInstalled && item.installedVersion != null)
+							Text(
+								item.installedVersion.toString(),
+								modifier = Modifier.padding(start = 8.dp),
+								fontSize = TextUnit(14f, TextUnitType.Sp)
+							)
+
+						if (item.isUpdateAvailable && item.updateVersion != null) {
+							if (item.updateVersion != Version(-9, -9, -9))
 								Text(
-									item.installedVersion.toString(),
+									stringResource(
+										R.string.update_to,
+										item.updateVersion.toString()
+									),
 									modifier = Modifier.padding(start = 8.dp),
-									fontSize = TextUnit(14f, TextUnitType.Sp)
+									fontSize = TextUnit(14f, TextUnitType.Sp),
+									color = MaterialTheme.colorScheme.tertiary
 								)
-
-							if (item.isUpdateAvailable && item.updateVersion != null) {
-								if (item.updateVersion != Version(-9, -9, -9))
-									Text(
-										stringResource(
-											R.string.update_to,
-											item.updateVersion.toString()
-										),
-										modifier = Modifier.padding(start = 8.dp),
-										fontSize = TextUnit(14f, TextUnitType.Sp),
-										color = MaterialTheme.colorScheme.tertiary
-									)
-							}
 						}
 					}
 				}
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.End
-				) {
-					if (!item.isInstalled && !item.isInstalling && !item.installOptions.isNullOrEmpty()) {
-						var isDropdownVisible by remember { mutableStateOf(false) }
-						IconButton(
-							onClick = {
-								// We can skip to dropdown if there is only 1 install option
-								if (item.installOptions.size != 1)
-									isDropdownVisible = true
-								else install(item.installOptions[0])
-							}
-						) {
-							Icon(painterResource(R.drawable.download), null)
-						}
-						DropdownMenu(
-							expanded = isDropdownVisible,
-							onDismissRequest = { isDropdownVisible = false },
-						) {
-							item.installOptions.forEach { s ->
-								DropdownMenuItem(
-									onClick = {
-										install(s)
-										isDropdownVisible = false
-									},
-									text = {
-										Column {
-											Text(
-												text = AnnotatedString(s.repoName)
-											)
-											Text(
-												text = AnnotatedString(s.version.toString()),
-												modifier = Modifier.padding(start = 8.dp)
-											)
-										}
-									}
-								)
-							}
-						}
-					}
-
-					if (item.isUpdateAvailable) {
-						IconButton(
-							onClick = update
-						) {
-							Icon(
-								painterResource(R.drawable.download),
-								stringResource(R.string.update),
-								modifier = Modifier.rotate(180f),
-								tint = MaterialTheme.colorScheme.tertiary
-							)
-						}
-					}
-
-					if (item.isInstalled) {
-						IconButton(
-							onClick = openSettings
-						) {
-							Icon(
-								painterResource(R.drawable.settings),
-								stringResource(R.string.settings)
-							)
-						}
-					}
-
-					if (item.isInstalling) {
-						IconButton(
-							onClick = {},
-							modifier = Modifier.combinedClickable(
-								onClick = {},
-								onLongClick = cancelInstall,
-							)
-						) {
-							val image =
-								AnimatedImageVector.animatedVectorResource(R.drawable.animated_refresh)
-
-							Icon(
-								rememberAnimatedVectorPainter(image, false),
-								stringResource(R.string.installing)
-							)
-						}
-					}
-				}
-
 			}
-
-			if (item.isUpdateAvailable && item.updateVersion != null) {
-				if (item.updateVersion == Version(-9, -9, -9)) {
-					Box(
-						modifier = Modifier
-							.background(MaterialTheme.colorScheme.tertiary)
-							.fillMaxWidth()
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.End
+			) {
+				if (!item.isInstalled && !item.isInstalling && !item.installOptions.isNullOrEmpty()) {
+					var isDropdownVisible by remember { mutableStateOf(false) }
+					SimpleIconButton(
+						Icons.Default.Download,
+						null,
+						onClick = {
+							// We can skip to dropdown if there is only 1 install option
+							if (item.installOptions.size != 1)
+								isDropdownVisible = true
+							else install(item.installOptions[0])
+						}
+					)
+					DropdownMenu(
+						expanded = isDropdownVisible,
+						onDismissRequest = { isDropdownVisible = false },
 					) {
-						Text(
-							stringResource(R.string.obsolete_extension),
-							color = colorResource(com.google.android.material.R.color.design_default_color_on_primary),
-							modifier = Modifier
-								.padding(8.dp)
-								.align(Alignment.Center)
-						)
+						item.installOptions.forEach { s ->
+							DropdownMenuItem(
+								onClick = {
+									install(s)
+									isDropdownVisible = false
+								},
+								text = {
+									Column {
+										Text(
+											text = AnnotatedString(s.repoName)
+										)
+										Text(
+											text = AnnotatedString(s.version.toString()),
+											modifier = Modifier.padding(start = 8.dp)
+										)
+									}
+								}
+							)
+						}
 					}
+				}
+
+				if (item.isUpdateAvailable) {
+					SimpleIconButton(
+						Icons.Default.Download,
+						stringResource(R.string.update),
+						onClick = update,
+						modifier = Modifier.rotate(180f),
+						tint = MaterialTheme.colorScheme.tertiary
+					)
+				}
+
+				if (item.isInstalled) {
+					SimpleIconButton(
+						Icons.Outlined.Settings,
+						stringResource(R.string.settings),
+						onClick = openSettings
+					)
+				}
+
+				if (item.isInstalling) {
+					SimpleIconButton(
+						stringResource(R.string.installing),
+						onClick = {},
+						modifier = Modifier.combinedClickable(
+							onClick = {},
+							onLongClick = cancelInstall,
+						)
+					) {
+						AnimatedRefresh()
+					}
+				}
+			}
+		}
+
+		if (item.isUpdateAvailable && item.updateVersion != null) {
+			if (item.updateVersion == Version(-9, -9, -9)) {
+				Box(
+					modifier = Modifier
+						.background(MaterialTheme.colorScheme.tertiary)
+						.fillMaxWidth()
+				) {
+					Text(
+						stringResource(R.string.obsolete_extension),
+						color = MaterialTheme.colorScheme.onPrimary,
+						modifier = Modifier
+							.padding(8.dp)
+							.align(Alignment.Center)
+					)
 				}
 			}
 		}

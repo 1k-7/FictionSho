@@ -4,7 +4,12 @@ import app.shosetsu.android.common.enums.TriStateState
 import app.shosetsu.android.domain.model.local.FilterEntity
 import app.shosetsu.android.domain.repository.base.IExtensionSettingsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.mapLatest
 
 /*
  * This file is part of Shosetsu.
@@ -63,7 +68,7 @@ class GetExtensionSettingsUseCase(
 	 * Converts a [List] of [FilterEntity] into a [List] of [Flow]s of [FilterEntity]s
 	 */
 	@OptIn(ExperimentalCoroutinesApi::class)
-	private suspend fun List<FilterEntity>.convert(extensionID: Int): List<Flow<FilterEntity>> =
+	private fun List<FilterEntity>.convert(extensionID: Int): List<Flow<FilterEntity>> =
 		map { filter ->
 			when (filter) {
 				is FilterEntity.Text -> {
@@ -75,12 +80,15 @@ class GetExtensionSettingsUseCase(
 						filter.copy(state = state)
 					}
 				}
+
 				is FilterEntity.Switch -> {
 					asSettingItem(extensionID, filter)
 				}
+
 				is FilterEntity.Checkbox -> {
 					asSettingItem(extensionID, filter)
 				}
+
 				is FilterEntity.TriState -> {
 					extSettingsRepository.getStringFlow(
 						extensionID,
@@ -90,6 +98,7 @@ class GetExtensionSettingsUseCase(
 						filter.copy(state = TriStateState.valueOf(newState))
 					}
 				}
+
 				is FilterEntity.Dropdown -> {
 					extSettingsRepository.getIntFlow(
 						extensionID,
@@ -99,6 +108,7 @@ class GetExtensionSettingsUseCase(
 						filter.copy(selected = state)
 					}
 				}
+
 				is FilterEntity.RadioGroup -> {
 					extSettingsRepository.getIntFlow(
 						extensionID,
@@ -109,16 +119,19 @@ class GetExtensionSettingsUseCase(
 						filter.copy(selected = state)
 					}
 				}
+
 				is FilterEntity.FList -> {
 					filter.filters.convert(extensionID).combine().mapLatest { subList ->
 						filter.copy(filters = subList)
 					}
 				}
+
 				is FilterEntity.Group -> {
 					filter.filters.convert(extensionID).combine().mapLatest { subList ->
 						filter.copy(filters = subList)
 					}
 				}
+
 				is FilterEntity.Header -> flowOf(filter)
 				is FilterEntity.Separator -> flowOf(filter)
 			}

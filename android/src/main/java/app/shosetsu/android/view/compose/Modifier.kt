@@ -19,9 +19,10 @@
 package app.shosetsu.android.view.compose
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LocalMinimumTouchTargetEnforcement
+import androidx.compose.material3.LocalMinimumInteractiveComponentEnforcement
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.LayoutModifier
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
@@ -32,16 +33,20 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.DpSize
 import kotlin.math.roundToInt
 
+const val SECONDARY_ALPHA = .78f
+
+fun Modifier.secondaryItemAlpha(): Modifier = this.alpha(SECONDARY_ALPHA)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("ModifierInspectorInfo")
 fun Modifier.minimumTouchTargetSize(): Modifier = composed(
 	inspectorInfo = debugInspectorInfo {
 		name = "minimumTouchTargetSize"
 		properties["README"] = "Adds outer padding to measure at least 48.dp (default) in " +
-				"size to disambiguate touch interactions if the element would measure smaller"
+			"size to disambiguate touch interactions if the element would measure smaller"
 	},
 ) {
-	if (LocalMinimumTouchTargetEnforcement.current) {
+	if (LocalMinimumInteractiveComponentEnforcement.current) {
 		val size = LocalViewConfiguration.current.minimumTouchTargetSize
 		MinimumTouchTargetModifier(size)
 	} else {

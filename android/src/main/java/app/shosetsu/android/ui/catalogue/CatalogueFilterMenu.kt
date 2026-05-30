@@ -5,22 +5,51 @@ package app.shosetsu.android.ui.catalogue
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.shosetsu.android.R
-import app.shosetsu.android.view.compose.ShosetsuCompose
+import app.shosetsu.android.common.enums.AppThemes
+import app.shosetsu.android.ui.theme.ShosetsuTheme
 import app.shosetsu.android.view.uimodels.StableHolder
 import app.shosetsu.lib.Filter
 import kotlinx.collections.immutable.ImmutableList
@@ -49,7 +78,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 @Preview
 @Composable
-fun CatalogFilterMenuPreview() = ShosetsuCompose {
+fun CatalogFilterMenuPreview() = ShosetsuTheme(AppThemes.LIGHT) {
 	CatalogFilterMenu(
 		listOf(
 			Filter.Header("This is a header"),
@@ -137,45 +166,53 @@ fun CatalogFilterMenuFilterListContent(
 		list.forEach { filter ->
 			when (filter.item) {
 				is Filter.Header -> Column {
-					Divider()
+					HorizontalDivider()
 				}
-				is Filter.Separator -> Divider()
+
+				is Filter.Separator -> HorizontalDivider()
 				is Filter.Password -> CatalogFilterMenuTextContent(
 					filter as StableHolder<Filter.Text>,
 					getString,
 					setString
 				)
+
 				is Filter.Text -> CatalogFilterMenuTextContent(
 					filter as StableHolder<Filter.Text>,
 					getString,
 					setString
 				)
+
 				is Filter.Switch -> CatalogFilterMenuSwitchContent(
 					filter as StableHolder<Filter.Switch>,
 					getBoolean,
 					setBoolean
 				)
+
 				is Filter.Checkbox ->
 					CatalogFilterMenuCheckboxContent(
 						filter as StableHolder<Filter.Checkbox>,
 						getBoolean,
 						setBoolean
 					)
+
 				is Filter.TriState -> CatalogFilterMenuTriStateContent(
 					filter as StableHolder<Filter.TriState>,
 					getInt,
 					setInt
 				)
+
 				is Filter.Dropdown -> CatalogFilterMenuDropDownContent(
 					filter as StableHolder<Filter.Dropdown>,
 					getInt,
 					setInt
 				)
+
 				is Filter.RadioGroup -> CatalogFilterMenuRadioGroupContent(
 					filter as StableHolder<Filter.RadioGroup>,
 					getInt,
 					setInt
 				)
+
 				is Filter.FList -> {
 					CatalogFilterMenuFilterListContent(
 						remember {
@@ -186,6 +223,7 @@ fun CatalogFilterMenuFilterListContent(
 						getBoolean, setBoolean, getInt, setInt, getString, setString
 					)
 				}
+
 				is Filter.Group<*> -> {
 					CatalogFilterMenuFilterListContent(
 						remember {
@@ -204,7 +242,7 @@ fun CatalogFilterMenuFilterListContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuFilterListContent() = ShosetsuCompose {
+fun PreviewCatalogFilterMenuFilterListContent() = ShosetsuTheme(AppThemes.LIGHT) {
 	CatalogFilterMenuFilterListContent(
 		list = listOf(
 			Filter.Switch(7, "Switch"),
@@ -253,9 +291,9 @@ fun CatalogFilterMenuFilterListContent(
 				checked = collapsed
 			) {
 				if (collapsed)
-					Icon(painterResource(R.drawable.expand_more), "")
+					Icon(Icons.Outlined.ExpandMore, "")
 				else
-					Icon(painterResource(R.drawable.expand_less), "")
+					Icon(Icons.Outlined.ExpandLess, "")
 			}
 		}
 
@@ -268,44 +306,52 @@ fun CatalogFilterMenuFilterListContent(
 				list.forEach { filter ->
 					when (filter.item) {
 						is Filter.Header -> Column {
-							Divider()
+							HorizontalDivider()
 						}
-						is Filter.Separator -> Divider()
+
+						is Filter.Separator -> HorizontalDivider()
 						is Filter.Password -> CatalogFilterMenuTextContent(
 							filter as StableHolder<Filter.Text>,
 							getString,
 							setString
 						)
+
 						is Filter.Text -> CatalogFilterMenuTextContent(
 							filter as StableHolder<Filter.Text>,
 							getString,
 							setString
 						)
+
 						is Filter.Switch -> CatalogFilterMenuSwitchContent(
 							filter as StableHolder<Filter.Switch>,
 							getBoolean,
 							setBoolean
 						)
+
 						is Filter.Checkbox -> CatalogFilterMenuCheckboxContent(
 							filter as StableHolder<Filter.Checkbox>,
 							getBoolean,
 							setBoolean
 						)
+
 						is Filter.TriState -> CatalogFilterMenuTriStateContent(
 							filter as StableHolder<Filter.TriState>,
 							getInt,
 							setInt
 						)
+
 						is Filter.Dropdown -> CatalogFilterMenuDropDownContent(
 							filter as StableHolder<Filter.Dropdown>,
 							getInt,
 							setInt
 						)
+
 						is Filter.RadioGroup -> CatalogFilterMenuRadioGroupContent(
 							filter as StableHolder<Filter.RadioGroup>,
 							getInt,
 							setInt
 						)
+
 						is Filter.FList -> {
 							Log.e(
 								"FilterListContent",
@@ -325,6 +371,7 @@ fun CatalogFilterMenuFilterListContent(
 								setString
 							)
 						}
+
 						is Filter.Group<*> -> {
 							Log.e(
 								"FilterListContent",
@@ -354,14 +401,13 @@ fun CatalogFilterMenuFilterListContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuTextContent() =
-	ShosetsuCompose {
-		CatalogFilterMenuTextContent(
-			filterHolder = StableHolder(Filter.Text(0, "This is a text input")),
-			{ MutableStateFlow("") },
-			{ _, _ -> }
-		)
-	}
+fun PreviewCatalogFilterMenuTextContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	CatalogFilterMenuTextContent(
+		filterHolder = StableHolder(Filter.Text(0, "This is a text input")),
+		{ MutableStateFlow("") },
+		{ _, _ -> }
+	)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -389,7 +435,7 @@ fun CatalogFilterMenuTextContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuSwitchContent() = ShosetsuCompose {
+fun PreviewCatalogFilterMenuSwitchContent() = ShosetsuTheme(AppThemes.LIGHT) {
 	CatalogFilterMenuSwitchContent(
 		filterHolder = StableHolder(Filter.Switch(0, "Switch")),
 		{ MutableStateFlow(false) },
@@ -426,8 +472,9 @@ fun CatalogFilterMenuSwitchContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuCheckboxContent() = ShosetsuCompose {
-	CatalogFilterMenuCheckboxContent(filterHolder = StableHolder(Filter.Checkbox(0, "Checkbox")),
+fun PreviewCatalogFilterMenuCheckboxContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	CatalogFilterMenuCheckboxContent(
+		filterHolder = StableHolder(Filter.Checkbox(0, "Checkbox")),
 		{ MutableStateFlow(false) },
 		{ _, _ -> })
 }
@@ -461,8 +508,9 @@ fun CatalogFilterMenuCheckboxContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuTriStateContent() = ShosetsuCompose {
-	CatalogFilterMenuTriStateContent(filterHolder = StableHolder(Filter.TriState(0, "Tristate")),
+fun PreviewCatalogFilterMenuTriStateContent() = ShosetsuTheme(AppThemes.LIGHT) {
+	CatalogFilterMenuTriStateContent(
+		filterHolder = StableHolder(Filter.TriState(0, "Tristate")),
 		{ MutableStateFlow(1) },
 		{ _, _ -> })
 }
@@ -513,7 +561,7 @@ fun CatalogFilterMenuTriStateContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuDropDownContent() = ShosetsuCompose {
+fun PreviewCatalogFilterMenuDropDownContent() = ShosetsuTheme(AppThemes.LIGHT) {
 	CatalogFilterMenuDropDownContent(
 		filterHolder = StableHolder(Filter.Dropdown(0, "Dropdown", listOf("A", "B", "C"))),
 		{ MutableStateFlow(1) },
@@ -560,9 +608,9 @@ fun CatalogFilterMenuDropDownContent(
 			) {
 
 				if (expanded)
-					Icon(painterResource(R.drawable.expand_less), "")
+					Icon(Icons.Outlined.ExpandLess, "")
 				else
-					Icon(painterResource(R.drawable.expand_more), "")
+					Icon(Icons.Outlined.ExpandMore, "")
 			}
 			DropdownMenu(
 				expanded = expanded,
@@ -586,7 +634,7 @@ fun CatalogFilterMenuDropDownContent(
 
 @Preview
 @Composable
-fun PreviewCatalogFilterMenuRadioGroupContent() = ShosetsuCompose {
+fun PreviewCatalogFilterMenuRadioGroupContent() = ShosetsuTheme(AppThemes.LIGHT) {
 	CatalogFilterMenuRadioGroupContent(
 		filterHolder = StableHolder(Filter.RadioGroup(0, "Dropdown", listOf("A", "B", "C"))),
 		{ MutableStateFlow(1) },
@@ -626,9 +674,9 @@ fun CatalogFilterMenuRadioGroupContent(
 				checked = expanded
 			) {
 				if (expanded)
-					Icon(painterResource(R.drawable.expand_less), "")
+					Icon(Icons.Outlined.ExpandLess, "")
 				else
-					Icon(painterResource(R.drawable.expand_more), "")
+					Icon(Icons.Outlined.ExpandMore, "")
 			}
 		}
 

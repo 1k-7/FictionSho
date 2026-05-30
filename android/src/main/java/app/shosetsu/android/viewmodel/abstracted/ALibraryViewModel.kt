@@ -43,6 +43,8 @@ abstract class ALibraryViewModel :
 	IsOnlineCheckViewModel,
 	StartUpdateManagerViewModel {
 
+	abstract val error: Flow<Throwable>
+
 	/**
 	 * View state of if the category dialog is open or not.
 	 *
@@ -61,7 +63,8 @@ abstract class ALibraryViewModel :
 	abstract fun hideCategoryDialog()
 
 	abstract val isEmptyFlow: StateFlow<Boolean>
-	abstract val hasSelection: StateFlow<Boolean>
+	abstract val selectionCount: StateFlow<Int>
+	abstract val selectedPinCount: StateFlow<Int>
 
 	/** All genres from all [LibraryNovelUI] combined*/
 	abstract val genresFlow: Flow<ImmutableList<String>>
@@ -115,7 +118,7 @@ abstract class ALibraryViewModel :
 
 	abstract fun removeSelectedFromLibrary()
 
-	abstract fun getSelectedIds(): Flow<IntArray>
+	abstract val selectedIds: StateFlow<List<Int>>
 	abstract fun deselectAll()
 	abstract fun selectAll()
 	abstract fun invertSelection()
@@ -128,9 +131,13 @@ abstract class ALibraryViewModel :
 	abstract val activeCategory: StateFlow<Int>
 	abstract fun setActiveCategory(category: Int)
 
-	/**
-	 * Toggle pin of selected novels
-	 */
-	abstract fun togglePinSelected()
+	abstract fun pinSelected()
+	abstract fun unpinSelected()
+
+	abstract val isFilterMenuVisible: StateFlow<Boolean>
+
+	abstract fun showFilterMenu()
+
+	abstract fun hideFilterMenu()
 
 }
