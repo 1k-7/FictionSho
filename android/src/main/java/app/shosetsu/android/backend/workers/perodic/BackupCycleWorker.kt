@@ -135,6 +135,10 @@ class BackupCycleWorker(
 		override fun start(data: Data) {
 			launchIO {
 				logI(LogConstants.SERVICE_NEW)
+				if (backupCycle() == 0L) {
+					logI("Backup cycle is disabled")
+					return@launchIO
+				}
 				workerManager.enqueueUniquePeriodicWork(
 					BACKUP_CYCLE_WORK_ID,
 					ExistingPeriodicWorkPolicy.UPDATE,

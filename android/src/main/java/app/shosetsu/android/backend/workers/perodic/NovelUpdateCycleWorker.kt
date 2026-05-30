@@ -150,6 +150,10 @@ class NovelUpdateCycleWorker(
 		override fun start(data: Data) {
 			launchIO {
 				logI(LogConstants.SERVICE_NEW)
+				if (updateCycle() == 0L) {
+					logI("Novel update cycle is disabled.")
+					return@launchIO
+				}
 				workerManager.enqueueUniquePeriodicWork(
 					UPDATE_CYCLE_WORK_ID,
 					ExistingPeriodicWorkPolicy.UPDATE,
