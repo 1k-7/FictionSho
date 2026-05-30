@@ -743,5 +743,7 @@
 	<string name="cycle_5_days">5 Days</string>
 	<string name="cycle_6_days">6 Days</string>
 	<string name="cycle_weekly">Weekly</string>
+	<string name="reader_error_chapter_reading">Failed to record chapter as being read.</string>
+	<string name="reader_error_chapter_read">Failed to record chapter as read.</string>
 
 </resources>
