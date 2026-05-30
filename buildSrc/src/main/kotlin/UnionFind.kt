@@ -7,6 +7,9 @@ class UnionFind<K : Any, V : Any>(
 ) {
 	private val nodes = mutableMapOf<K, Node<K, V>>()
 
+	/**
+	 * Find a node matching a given key, if none is found, put and returns an empty node.
+	 */
 	private fun _find(key: K): Node<K, V> = nodes.getOrPut(key) { Node(key, null, null) }.find()
 
 	fun union(canonical: K, alternative: K) {
@@ -32,15 +35,29 @@ class UnionFind<K : Any, V : Any>(
 		}
 	}
 
+	/**
+	 * Given a key, return the key of the node matching the given key.
+	 */
 	fun find(key: K): K = _find(key).key
+
 	operator fun get(key: K): V? = _find(key).value
 	operator fun set(key: K, value: V) {
 		_find(key).value = value
 	}
 
+	/**
+	 * Given a key, perform a remapping of the nodes value, returning the new value.
+	 *
+	 * @return new value of the node.
+	 */
 	fun compute(key: K, remappingFunction: (K, V?) -> V?): V? {
+		// Find the node
 		val node = _find(key)
+
+		// Perform a remapping of its current value
 		node.value = remappingFunction(node.key, node.value)
+
+		// Return the new value
 		return node.value
 	}
 

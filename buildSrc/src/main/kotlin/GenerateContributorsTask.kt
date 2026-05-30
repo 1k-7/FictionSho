@@ -86,36 +86,59 @@ abstract class GenerateContributorsTask : DefaultTask() {
 				a.commits + b.commits
 			)
 		})
-		Git.open(gitDir.get().asFile).use {
-			it.log().all().call().forEach { commit ->
-				val name = commit.authorIdent.name
-				encountered.compute(name) { _, it ->
-					it ?: EncounteredContributor(
-						commit.authorIdent.emailAddress,
-						0
-					)
-				}!!.commits++
-				encountered.union(canonical = name, alternative = name.lowercase())
+
+		try {
+			Git.open(gitDir.get().asFile).use {
+				it.log().all().call().forEach { commit ->
+					val name = commit.authorIdent.name
+					encountered.compute(name) { _, it ->
+						it ?: EncounteredContributor(
+							// Get the authors preferred email
+							Contributors.preferredEmails.getOrDefault(
+								commit.authorIdent.emailAddress,
+								commit.authorIdent.emailAddress
+							),
+							0
+						)
+					}!!.commits++
+					encountered.union(canonical = name, alternative = name.lowercase())
+				}
 			}
+		} catch (exception: java.io.IOException) {
+			logger.error("Something failed!", exception)
+		} catch (exception: Throwable) {
+			logger.error("Something worse failed!", exception)
 		}
 
-		Contributors.preferredNames.forEach {
-			encountered.union(canonical = it.value, alternative = it.key)
+		Contributors.preferredNames.forEach { (oldName, preferredName) ->
+			encountered.union(canonical = preferredName, alternative = oldName)
 		}
 
 		return encountered.asSequence()
-			.mapNotNull { it.first to (it.second ?: return@mapNotNull null) }
-			.filter { it.second.commits > 0 }
-			.map {
+			.mapNotNull { (name, eContributor) -> name to (eContributor ?: return@mapNotNull null) }
+			.filter { (_, eContributor) -> eContributor.commits > 0 }
+			.map { (name, eContributor) ->
 				Contributor(
-					name = it.first,
-					email = it.second.email,
-					commits = it.second.commits,
-					website = Contributors.websites[it.first.lowercase()],
-					image = Contributors.images[it.first.lowercase()]
+					name = name,
+					email = eContributor.email,
+					commits = eContributor.commits,
+					website = Contributors.websites[name.lowercase()],
+					image = Contributors.images[name.lowercase()]
 				)
 			}
-			.sortedByDescending { it.commits }
+			.sortedByDescending { (_, _, commits, _, _) -> commits }
+			// Group by email for merging
+			.groupBy { (_, email, _, _, _) -> email }
+			// Merge emails that match! The one with the most commits gets the priority.
+			.map { (_, contributors) ->
+				val first = contributors.first()
+				if (contributors.size > 1) {
+					contributors.subList(1, contributors.size).forEach {
+						first.commits += it.commits
+					}
+				}
+				first
+			}
 			.toList()
 	}
 

@@ -14,6 +14,16 @@ object Contributors {
 	)
 
 	/**
+	 * Association between preferred emails.
+	 *
+	 * For example, "doomsdayrs@gmail.com" should be mapped to "me@doomsdayrs.page".
+	 */
+	val preferredEmails = mapOf(
+		"doomsdayrs@proton.me" to "me@doomsdayrs.page",
+		"doomsdayrs@gmail.com" to "me@doomsdayrs.page"
+	)
+
+	/**
 	 * Association between a name and an image url.
 	 *
 	 * Name can be preferred name.
