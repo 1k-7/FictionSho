@@ -725,5 +725,7 @@
 	<string name="text_filter">Text filter</string>
 	<string name="empty_library_message_go_to_browse">Go to Browse.</string>
 	<string name="contributors">Contributors</string>
+	<string name="settings_update_novel_on_boot_title">Update Novels on Boot</string>
+	<string name="settings_update_novel_on_boot_desc">If Shosetsu will check for novel updates on boot.</string>
 
 </resources>

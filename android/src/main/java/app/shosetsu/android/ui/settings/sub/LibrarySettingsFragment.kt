@@ -84,6 +84,17 @@ fun LibrarySettingsContent(
 			}
 
 			item {
+				SwitchSettingContent(
+					stringResource(R.string.settings_update_novel_on_boot_title),
+					stringResource(R.string.settings_update_novel_on_boot_desc),
+					viewModel.settingsRepo,
+					SettingKey.UpdateNovelsOnStartup,
+					modifier = Modifier
+						.fillMaxWidth()
+				)
+			}
+
+			item {
 				SliderSettingContent(
 					title = stringResource(R.string.settings_update_novel_frequency_title),
 					description = stringResource(R.string.settings_update_novel_frequency_desc),
