@@ -193,7 +193,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object IncludeCategoriesToDownload : StringSetKey("includedCategoriesToDownload", emptySet())
 	object ExcludedCategoriesToDownload : StringSetKey("excludedCategoriesToDownload", emptySet())
 
-	object NovelUpdateCycle : IntKey("updateCycle", 12)
+	object NovelUpdateCycle : IntKey("updateCycle", 0)
 	object NovelUpdateOnLowStorage : BooleanKey("updateLowStorage", true)
 	object NovelUpdateOnLowBattery : BooleanKey("updateLowBattery", true)
 	object NovelUpdateOnMeteredConnection : BooleanKey("updateMetered", true)
@@ -230,7 +230,7 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object BackupStorageLocation : StringKey("backupStorageLocation", "")
 	object ShouldBackupChapters : BooleanKey("backupChapters", true)
 	object ShouldBackupSettings : BooleanKey("backupSettings", false)
-	object BackupCycle : IntKey("backupCycle", 12)
+	object BackupCycle : IntKey("backupCycle", 0)
 
 	object BackupOnLowStorage : BooleanKey("backupLowStorage", true)
 	object BackupOnLowBattery : BooleanKey("backupLowBattery", true)
