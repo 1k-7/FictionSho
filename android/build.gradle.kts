@@ -35,7 +35,9 @@ android {
 			loadSProperties("acra")["password"]?.toString() ?: "\"\""
 		)
 
-		setProperty("archivesBaseName", rootProject.name)
+		// Hopefully this results in the beloved shosetsu-... apks
+		base.archivesName.set(rootProject.name)
+
 		vectorDrawables {
 			useSupportLibrary = true
 		}
