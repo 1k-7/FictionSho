@@ -176,6 +176,7 @@ fun ContributorItem(
 	val uriHandler = LocalUriHandler.current
 
 	Box(Modifier.requiredWidthIn(max = 60.dp)) {
+		// TODO, Maybe a custom contributor image shape would be nice.
 		NovelCardCozyContent(
 			contributor.name,
 			contributor.image ?: "",
@@ -296,15 +297,24 @@ fun AboutContent(
 			item {
 				HorizontalDivider()
 			}
+
+			item {
+				Text(stringResource(R.string.contributors), Modifier.padding(start = 16.dp, top = 8.dp))
+			}
+
 			item {
 				LazyRow(
-					contentPadding = PaddingValues(8.dp),
+					contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
 					horizontalArrangement = Arrangement.spacedBy(4.dp)
 				) {
 					items(contributors) {
 						ContributorItem(it)
 					}
 				}
+			}
+
+			item {
+				HorizontalDivider()
 			}
 			item {
 				AboutItem(
