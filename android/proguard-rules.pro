@@ -128,6 +128,9 @@
 -dontwarn org.apache.bcel.generic.StackInstruction
 -dontwarn org.apache.bcel.generic.Type
 
+# Kodein is complaining about fingerprint manager, meh
+-dontwarn android.hardware.fingerprint.FingerprintManager
+
 # Kodein
 -keep, allowobfuscation, allowoptimization class org.kodein.type.TypeReference
 -keep, allowobfuscation, allowoptimization class org.kodein.type.JVMAbstractTypeToken$Companion$WrappingTest
