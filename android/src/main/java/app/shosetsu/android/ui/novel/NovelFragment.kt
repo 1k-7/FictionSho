@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -1018,8 +1017,8 @@ fun NovelChapterContent(
 
 @Preview
 @Composable
-fun PreviewHeaderContent() {
-	val info = NovelUI(
+fun PreviewHeaderContent(
+	info: NovelUI = NovelUI(
 		id = 0,
 		novelURL = "",
 		extID = 1,
@@ -1036,7 +1035,7 @@ fun PreviewHeaderContent() {
 		tags = listOf("A", "B", "C"),
 		status = Novel.Status.COMPLETED
 	)
-
+) {
 	Surface {
 		NovelInfoHeaderContent(
 			info,
@@ -1046,6 +1045,78 @@ fun PreviewHeaderContent() {
 			{}
 		)
 	}
+}
+
+@Preview
+@Composable
+fun PreviewHeaderWithNoDescriptionContent() {
+	PreviewHeaderContent(
+		NovelUI(
+			id = 0,
+			novelURL = "",
+			extID = 1,
+			extName = "Test",
+			bookmarked = false,
+			title = "Title",
+			imageURL = "",
+			description = "",
+			loaded = true,
+			language = "eng",
+			genres = listOf("A", "B", "C"),
+			authors = listOf("A", "B", "C"),
+			artists = listOf("A", "B", "C"),
+			tags = listOf("A", "B", "C"),
+			status = Novel.Status.COMPLETED
+		)
+	)
+}
+
+@Preview
+@Composable
+fun PreviewHeaderWithNoGenresContent() {
+	PreviewHeaderContent(
+		NovelUI(
+			id = 0,
+			novelURL = "",
+			extID = 1,
+			extName = "Test",
+			bookmarked = false,
+			title = "Title",
+			imageURL = "",
+			description = "laaaaaaaaaaaaaaaaaaaaaaaaaa\nlaaaaaaaaaaaaaaaaaaa\nklaaaaaaaaaaaaa",
+			loaded = true,
+			language = "eng",
+			genres = listOf(),
+			authors = listOf("A", "B", "C"),
+			artists = listOf("A", "B", "C"),
+			tags = listOf("A", "B", "C"),
+			status = Novel.Status.COMPLETED
+		)
+	)
+}
+
+@Preview
+@Composable
+fun PreviewHeaderWithNoDescriptionOrGenresContent() {
+	PreviewHeaderContent(
+		NovelUI(
+			id = 0,
+			novelURL = "",
+			extID = 1,
+			extName = "Test",
+			bookmarked = false,
+			title = "Title",
+			imageURL = "",
+			description = "",
+			loaded = true,
+			language = "eng",
+			genres = listOf(),
+			authors = listOf("A", "B", "C"),
+			artists = listOf("A", "B", "C"),
+			tags = listOf("A", "B", "C"),
+			status = Novel.Status.COMPLETED
+		)
+	)
 }
 
 @Composable
@@ -1323,15 +1394,18 @@ fun NovelInfoHeaderContent(
 			}
 		}
 
-		// Description
-		SelectionContainer {
-			ExpandedText(
-				modifier = Modifier
-					.fillMaxWidth()
-					.padding(top = 8.dp),
-				text = novelInfo.description,
-				genre = novelInfo.displayGenre
-			)
+		// Only show if there is either text or genres.
+		if (novelInfo.description.isNotBlank() || novelInfo.displayGenre.isNotEmpty()) {
+			// Serves as the description section
+			SelectionContainer {
+				ExpandedText(
+					modifier = Modifier
+						.fillMaxWidth()
+						.padding(top = 8.dp),
+					text = novelInfo.description,
+					genre = novelInfo.displayGenre
+				)
+			}
 		}
 	}
 }
@@ -1423,19 +1497,21 @@ fun ExpandedText(
 			interactionSource = remember { MutableInteractionSource() }
 		)
 	) {
-		Text(
-			if (isExpanded) {
-				text
-			} else {
-				text.let {
-					if (it.length > 200)
-						it.substring(0, 200) + "..."
-					else it
-				}
-			},
-			style = MaterialTheme.typography.bodyMedium,
-			modifier = Modifier.padding(start = 8.dp, end = 8.dp)
-		)
+		if (text.isNotBlank()) {
+			Text(
+				if (isExpanded) {
+					text
+				} else {
+					text.let {
+						if (it.length > 200)
+							it.substring(0, 200) + "..."
+						else it
+					}
+				},
+				style = MaterialTheme.typography.bodyMedium,
+				modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+			)
+		}
 
 		if (genre.isNotEmpty()) {
 			if (!isExpanded) {
@@ -1465,19 +1541,21 @@ fun ExpandedText(
 			}
 		}
 
-		Icon(
-			imageVector = if (!isExpanded) {
-				Icons.Outlined.ExpandMore
-			} else {
-				Icons.Outlined.ExpandLess
-			},
-			contentDescription = if (!isExpanded) {
-				stringResource(R.string.more)
-			} else {
-				stringResource(R.string.less)
-			},
-			modifier = Modifier.padding(bottom = 8.dp)
-		)
+		if (text.isNotBlank()) {
+			Icon(
+				imageVector = if (!isExpanded) {
+					Icons.Outlined.ExpandMore
+				} else {
+					Icons.Outlined.ExpandLess
+				},
+				contentDescription = if (!isExpanded) {
+					stringResource(R.string.more)
+				} else {
+					stringResource(R.string.less)
+				},
+				modifier = Modifier.padding(bottom = 8.dp)
+			)
+		}
 	}
 }
 
