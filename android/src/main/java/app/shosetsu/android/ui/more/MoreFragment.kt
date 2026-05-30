@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.Info
@@ -61,6 +62,7 @@ import app.shosetsu.android.R
 fun MoreView(
 	onNavToDownloads: () -> Unit = {},
 	onNavToBackup: () -> Unit = {},
+	onNavToRepositories: () -> Unit = {},
 	onNavToCategories: () -> Unit = {},
 	onNavToAddShare: () -> Unit = {},
 	onNavToAnalytics: () -> Unit = {},
@@ -73,6 +75,7 @@ fun MoreView(
 		onNavToDownloads = onNavToDownloads,
 		onNavToBackup = onNavToBackup,
 		onNavToCategories = onNavToCategories,
+		onNavToRepositories = onNavToRepositories,
 		onNavToAddShare = onNavToAddShare,
 		onNavToAnalytics = onNavToAnalytics,
 		onNavToHistory = onNavToHistory,
@@ -122,6 +125,7 @@ fun PreviewMoreContent() {
 fun MoreContent(
 	onNavToDownloads: () -> Unit = {},
 	onNavToBackup: () -> Unit = {},
+	onNavToRepositories: () -> Unit = {},
 	onNavToCategories: () -> Unit = {},
 	onNavToAddShare: () -> Unit = {},
 	onNavToAnalytics: () -> Unit = {},
@@ -170,6 +174,14 @@ fun MoreContent(
 
 			item {
 				MoreItemContent(R.string.backup, Icons.Outlined.Restore, onNavToBackup)
+			}
+
+			item {
+				MoreItemContent(
+					R.string.repositories,
+					Icons.Outlined.AddShoppingCart,
+					onNavToRepositories
+				)
 			}
 
 			item {
