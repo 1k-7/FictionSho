@@ -49,7 +49,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -356,7 +356,7 @@ fun LibraryAppBar(
 	isEmpty: Boolean,
 	drawerIcon: @Composable () -> Unit
 ) {
-	val behavior = enterAlwaysScrollBehavior()
+	val behavior = pinnedScrollBehavior()
 
 	if (selectedCount > 0) {
 		SelectionTopAppBar(

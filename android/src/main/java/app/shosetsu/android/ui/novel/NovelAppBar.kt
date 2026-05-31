@@ -58,7 +58,7 @@ fun NovelAppBar(
 	onOpenShareMenu: () -> Unit
 ) {
 
-	val behavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+	val behavior = TopAppBarDefaults.pinnedScrollBehavior()
 
 	if (selectedCount > 0) {
 		SelectionTopAppBar(

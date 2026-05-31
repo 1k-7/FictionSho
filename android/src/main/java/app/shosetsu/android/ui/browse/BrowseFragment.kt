@@ -59,7 +59,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -265,7 +265,7 @@ fun BrowseContent(
 				title = {
 					Text(stringResource(R.string.browse))
 				},
-				scrollBehavior = enterAlwaysScrollBehavior(),
+				scrollBehavior = pinnedScrollBehavior(),
 				actions = {
 					SearchAction(
 						query = query,
