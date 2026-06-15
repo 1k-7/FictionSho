@@ -74,6 +74,7 @@ import app.shosetsu.lib.IExtension
 import app.shosetsu.lib.Novel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -143,7 +144,7 @@ class ChapterReaderViewModel(
 	private val loadChapterPassageUseCase: GetChapterPassageUseCase,
 	private val getReaderSettingsUseCase: GetReaderSettingUseCase,
 	private val recordChapterIsReading: RecordChapterIsReadingUseCase,
-	private val recordChapterIsRead: RecordChapterIsReadUseCase,
+	private val recordChapterAsRead: RecordChapterIsReadUseCase,
 	private val getExt: GetExtensionUseCase,
 	private val loadDeletePreviousChapterUseCase: LoadDeletePreviousChapterUseCase,
 	private val deleteChapterPassageUseCase: DeleteChapterPassageUseCase,
@@ -533,13 +534,7 @@ class ChapterReaderViewModel(
 
 	override fun updateChapterAsRead(chapter: ReaderChapterUI) {
 		launchIO {
-			try {
-				recordChapterIsRead(chapter)
-			} catch (e: Exception) {
-				logE("Failed to record chapter as read.", e)
-				ACRA.errorReporter.handleSilentException(e)
-				exceptions.emit(application.getString(R.string.reader_error_chapter_read))
-			}
+			_recordChapterAsRead(chapter)
 
 			try {
 				chapterRepository.getChapter(chapter.id)?.let {
@@ -570,6 +565,40 @@ class ChapterReaderViewModel(
 		}
 	}
 
+	/**
+	 * Wrapper of [recordChapterIsReading] for exceptions.
+	 */
+	private suspend fun _recordChapterIsReading(chapter: ReaderChapterUI) {
+		try {
+			recordChapterIsReading(chapter)
+		} catch (e: CancellationException) {
+			logE("Job to record chapter as being read was cancelled...", e)
+			// We do not want to report the error in this case, its a common on.
+			exceptions.emit(application.getString(R.string.reader_error_chapter_reading_cancelled))
+		} catch (e: Exception) {
+			logE("Failed to record chapter as being read.", e)
+			ACRA.errorReporter.handleSilentException(e)
+			exceptions.emit(application.getString(R.string.reader_error_chapter_reading))
+		}
+	}
+
+	/**
+	 * Wrapper of [recordChapterAsRead] for exceptions.
+	 */
+	private suspend fun _recordChapterAsRead(chapter: ReaderChapterUI) {
+		try {
+			recordChapterAsRead(chapter)
+		} catch (e: CancellationException) {
+			logE("Job to record chapter as read was cancelled...", e)
+			// We do not want to report the error in this case, its a common on.
+			exceptions.emit(application.getString(R.string.reader_error_chapter_read_cancelled))
+		} catch (e: Exception) {
+			logE("Failed to record chapter as read.", e)
+			ACRA.errorReporter.handleSilentException(e)
+			exceptions.emit(application.getString(R.string.reader_error_chapter_read))
+		}
+	}
+
 	override fun onViewed(chapter: ReaderChapterUI) {
 		//logV("$chapter")
 		launchIO {
@@ -586,13 +615,7 @@ class ChapterReaderViewModel(
 				 */
 				if (readingMarkingTypeFlow.first() != ONVIEW) return@launchIO
 
-				try {
-					recordChapterIsReading(chapter)
-				} catch (e: Exception) {
-					logE("Failed to record chapter as being read.", e)
-					ACRA.errorReporter.handleSilentException(e)
-					exceptions.emit(application.getString(R.string.reader_error_chapter_reading))
-				}
+				_recordChapterIsReading(chapter)
 
 				chapterRepository.updateChapter(
 					chapterEntity.copy(readingStatus = READING)
@@ -624,13 +647,7 @@ class ChapterReaderViewModel(
 							 */
 					val markingType = readingMarkingTypeFlow.first()
 					if (markingType == ONSCROLL) {
-						try {
-							recordChapterIsReading(chapter)
-						} catch (e: Exception) {
-							logE("Failed to record chapter as being read.", e)
-							ACRA.errorReporter.handleSilentException(e)
-							exceptions.emit(application.getString(R.string.reader_error_chapter_reading))
-						}
+						_recordChapterIsReading(chapter)
 					}
 
 					// Remove temp progress
@@ -650,13 +667,7 @@ class ChapterReaderViewModel(
 			} else {
 				// User probably sees everything at this point
 
-				try {
-					recordChapterIsRead(chapter)
-				} catch (e: Exception) {
-					logE("Failed to record chapter as read.", e)
-					ACRA.errorReporter.handleSilentException(e)
-					exceptions.emit(application.getString(R.string.reader_error_chapter_read))
-				}
+				_recordChapterAsRead(chapter)
 
 				// Temp remember the progress
 				progressMapFlow.value = progressMapFlow.value.copy().apply {
