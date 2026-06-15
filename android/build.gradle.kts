@@ -14,7 +14,9 @@ tasks.preBuild { dependsOn(generateContributors) }
 val CI_MODE = System.getenv("CI_MODE") == "true"
 
 android {
+	// keep these in sync with .gitlab-ci.yml
 	compileSdk = 37
+	buildToolsVersion = "37.0.0"
 	defaultConfig {
 		applicationId = "app.shosetsu.android"
 		minSdk = 22

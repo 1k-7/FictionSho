@@ -36,7 +36,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -244,7 +244,7 @@ fun UpdatesAppBar(
 				}
 			}
 		},
-		scrollBehavior = enterAlwaysScrollBehavior(),
+		scrollBehavior = pinnedScrollBehavior(),
 		navigationIcon = drawerIcon
 	)
 }

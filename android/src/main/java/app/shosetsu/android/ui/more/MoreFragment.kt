@@ -29,7 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -140,7 +140,7 @@ fun MoreContent(
 				title = {
 					Text(stringResource(R.string.more))
 				},
-				scrollBehavior = enterAlwaysScrollBehavior(),
+				scrollBehavior = pinnedScrollBehavior(),
 				navigationIcon = drawerIcon
 			)
 		},
