@@ -748,5 +748,9 @@
 	<string name="webview_required">WebView is required for the app to function</string>
 	<string name="reader_error_chapter_read_cancelled">Job to record chapter as read was cancelled.</string>
 	<string name="reader_error_chapter_reading_cancelled">Job to record chapter as being read was cancelled.</string>
+	<string name="search_error_ext_broken">Extension \'%s\'(%d) is broken! Ignoring it.</string>
+	<string name="search_error_ext_incompatible">Extension \'%s\'(%d) is incompatible! Ignoring it.</string>
+	<string name="search_error_ext_incomplete">Extension \'%s\'(%d) is incomplete! Ignoring it.</string>
+	<string name="search_error_ext_generic">Failed to load extension \'%s\'(%d). Ignoring it.</string>
 
 </resources>
