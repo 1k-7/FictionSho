@@ -405,7 +405,7 @@
 	<string name="settings_update_novel_notification_style_title">Notification Style</string>
 	<string name="settings_update_novel_notification_style_desc">Swaps between two stypes of notifications. Check them out :D</string>
 	<string name="settings_update_novel_show_progress_title">Notify update progress</string>
-	<string name="settings_update_novel_show_progress_desc">If toggled on, You will have no idea what novels are being updated</string>
+	<string name="settings_update_novel_show_progress_desc">If toggled off, You will have no idea what novels are being updated</string>
 	<string name="settings_update_novel_classic_notification_title">Classic notification completion</string>
 	<string name="settings_update_novel_classic_notification_desc">Instead of showing you which how many chapters are in each novel, simply says \“Completed Update\”</string>
 	<string name="settings_update_novel_categories_update">Categories to update</string>
