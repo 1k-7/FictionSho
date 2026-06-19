@@ -36,6 +36,7 @@ import app.shosetsu.android.common.enums.MarkingType.ONVIEW
 import app.shosetsu.android.common.enums.ReadingStatus.READ
 import app.shosetsu.android.common.enums.ReadingStatus.READING
 import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.ext.logD
 import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.logI
 import app.shosetsu.android.common.ext.logV
@@ -358,9 +359,9 @@ class ChapterReaderViewModel(
 
 					// keep a single backing store of the iterator,
 					//  as to prevent it from being recreated
-					val ttsIterator = ElementToTTSTextIterator(
+					val ttsIterator = ElementToTTSTextIterator {
 						ttsElements.listIterator()
-					)
+					}
 
 					emitAll(cssStyle.map { cssStyle ->
 						cssStyle.insert(document)
@@ -1147,11 +1148,12 @@ class ChapterReaderViewModel(
 		}
 	}
 
+	@Throws(NoSuchElementException::class)
 	private fun syncTTSIterator(ttsElements: RewindableMutableListIterator<TTSText>) {
 		val ttsState = ttsProgress.value
 
-		// rewind
-		ttsElements.rewind()
+		// Recreate!
+		ttsElements.recreate()
 
 		// check if the tts was playing something
 		if (ttsState != null) {
@@ -1162,7 +1164,15 @@ class ChapterReaderViewModel(
 
 			while (ttsElements.hasNext()) {
 				if (ttsElements.next().id == ttsState) {
-					ttsElements.previous() // make current next
+					val currentIndex = ttsElements.nextIndex()
+					try {
+						ttsElements.previous() // make current next
+					} catch (e: NoSuchElementException) {
+						if (currentIndex == 0) {
+							logD("We are at the first element, Recreating the iterator-")
+						}
+						ttsElements.recreate()
+					}
 					found = true
 					break
 				}
