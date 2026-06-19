@@ -171,6 +171,7 @@ fun ReaderSettingsContent(
 					choices = stringArrayResource(R.array.text_alignments).toList(),
 					repo = viewModel.settingsRepo,
 					key = ReaderTextAlignment,
+					iconDescription = null
 				)
 			}
 
@@ -189,7 +190,8 @@ fun ReaderSettingsContent(
 			item {
 				GenericBottomSettingLayout(
 					title = stringResource(R.string.theme),
-					description = ""
+					description = "",
+					iconDescription = null // No icon
 				) {
 					val themes by viewModel.getReaderThemes().collectAsState(emptyList())
 
@@ -256,7 +258,8 @@ fun ReaderSettingsContent(
 				TextPreferenceWidget(
 					title = stringResource(R.string.styles),
 					icon = Icons.Outlined.ImagesearchRoller,
-					onPreferenceClick = showStyleAddSnackBar
+					onPreferenceClick = showStyleAddSnackBar,
+					iconDescription = stringResource(R.string.icon_desc_image_search_roller)
 				)
 			}
 
@@ -396,7 +399,8 @@ fun ReaderSettingsVoiceOption(
 						Icon(Icons.Outlined.ExpandMore, "")
 				}
 			},
-			onPreferenceClick = { expanded = !expanded }
+			onPreferenceClick = { expanded = !expanded },
+			iconDescription = null
 		)
 
 		val sortedVoices by remember { derivedStateOf { voices.sortedByDescending { it.quality } } }

@@ -562,12 +562,13 @@ fun LazyGridScope.catalogListingSelection(
 				ListPreferenceWidget(
 					title = stringResource(R.string.fragment_catalogue_listing_selection_title),
 					subtitle = listingSelectionData.choices[listingSelectionData.selection],
-					icon = null,
 					value = listingSelectionData.selection,
 					entries = listingSelectionData.choices.withIndex()
 						.associate { it.index to it.value },
 					onValueChange = setListing,
-					isSubtitleTheValue = true
+					isSubtitleTheValue = true,
+					icon = null,
+					iconDescription = null
 				)
 		}
 	}

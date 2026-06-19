@@ -19,6 +19,7 @@ fun SwitchPreferenceWidget(
 	title: String,
 	subtitle: String? = null,
 	icon: ImageVector? = null,
+	iconDescription: String?,
 	checked: Boolean = false,
 	enabled: Boolean = true,
 	onCheckedChanged: (Boolean) -> Unit,
@@ -37,6 +38,7 @@ fun SwitchPreferenceWidget(
 			)
 		},
 		onPreferenceClick = { if (enabled) onCheckedChanged(!checked) },
+		iconDescription = iconDescription
 	)
 }
 
@@ -51,22 +53,26 @@ private fun SwitchPreferenceWidgetPreview() = ShosetsuTheme(AppThemes.LIGHT) {
 				icon = Icons.Filled.Preview,
 				checked = true,
 				onCheckedChanged = {},
+				iconDescription = null
 			)
 			SwitchPreferenceWidget(
 				title = "Text preference",
 				subtitle = "Text preference summary",
 				checked = false,
 				onCheckedChanged = {},
+				iconDescription = null
 			)
 			SwitchPreferenceWidget(
 				title = "Text preference no summary",
 				checked = false,
 				onCheckedChanged = {},
+				iconDescription = null
 			)
 			SwitchPreferenceWidget(
 				title = "Another text preference no summary",
 				checked = false,
 				onCheckedChanged = {},
+				iconDescription = null
 			)
 		}
 	}

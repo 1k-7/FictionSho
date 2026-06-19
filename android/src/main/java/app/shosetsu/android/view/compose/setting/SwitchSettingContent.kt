@@ -24,7 +24,8 @@ fun SwitchSettingContent(
 		subtitle = description,
 		checked = value,
 		modifier = modifier,
-		enabled = enabled
+		enabled = enabled,
+		iconDescription = null
 	) { it: Boolean ->
 		launchIO { repo.setBoolean(key, it) }
 	}

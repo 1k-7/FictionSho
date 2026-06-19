@@ -754,5 +754,16 @@
 	<string name="search_error_ext_generic">Failed to load extension \'%s\'(%d). Ignoring it.</string>
 	<string name="worker_extension_install_error_network_retried">Network error \"%s\" when installing extension (\'%d\') \'%s\'.</string>
 	<string name="worker_extension_install_error_network">Network error \"%s\" when installing extension (\'%d\') \'%s\'.\nTrying again...</string>
+	<string name="novel_image_content_description">The cover art of the novel \"%s\".</string>
+	<string name="image_description_broken">The image failed to load.</string>
+	<string name="icon_desc_palette">An image of an artists palette</string>
+	<string name="icon_desc_collections_bookmark">An icon of books with bookmarks.</string>
+	<string name="icon_desc_chrome_reader_mode">An icon of a book open, as if someone is reading it.</string>
+	<string name="icon_desc_download">A download icon with an arrow pointing down at a rectangle.</string>
+	<string name="icon_desc_explore">An icon of a compass.</string>
+	<string name="icon_desc_restore">An icon that has an arrow looping around a clock counter clockwise.</string>
+	<string name="icon_desc_code"><![CDATA[An icon representing code, using the characters, in order, \"<>\".]]></string>
+	<string name="icon_desc_info">An icon with a circle with an \"i\" in the middle to represent information.</string>
+	<string name="icon_desc_image_search_roller">An icon of a paint roller, upright as if about to be used.</string>
 
 </resources>

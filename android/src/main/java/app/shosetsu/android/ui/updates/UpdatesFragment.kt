@@ -404,7 +404,7 @@ fun UpdateItemContent(
 						.data(updateUI.novelImageURL)
 						.crossfade(true)
 						.build(),
-					contentDescription = null,
+					contentDescription = stringResource(R.string.novel_image_content_description, updateUI.novelName),
 					contentScale = ContentScale.Crop,
 					modifier = Modifier
 						.aspectRatio(coverRatio)

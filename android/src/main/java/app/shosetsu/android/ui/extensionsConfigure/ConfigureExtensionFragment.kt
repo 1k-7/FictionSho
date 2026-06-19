@@ -163,7 +163,8 @@ fun ConfigureExtensionContent(
 						icon = null,
 						value = selection,
 						entries = choices.withIndex().associate { it.index to it.value },
-						onValueChange = { viewModel.setSelectedListing(it) }
+						onValueChange = { viewModel.setSelectedListing(it) },
+						iconDescription = null
 					)
 				}
 			}
@@ -221,7 +222,8 @@ fun SettingsItemAsCompose(
 						modifier = Modifier.fillMaxWidth(),
 						onCheckedChanged = { newValue ->
 							viewModel.saveSetting(data.id, newValue)
-						}
+						},
+						iconDescription = null
 					)
 				}
 			}
@@ -288,7 +290,8 @@ fun SettingsItemAsCompose(
 						modifier = Modifier.fillMaxWidth(),
 						onCheckedChanged = { newValue ->
 							viewModel.saveSetting(data.id, newValue)
-						}
+						},
+						iconDescription = null
 					)
 				}
 			}

@@ -151,6 +151,7 @@ fun AppearanceSettingsContent(
 					value = currentLanguage,
 					entries = langs.associateWith { it.localizedDisplayName ?: it.displayName },
 					onValueChange = { currentLanguage = it },
+					iconDescription = null
 				)
 			}
 
@@ -183,7 +184,8 @@ fun AppearanceSettingsContent(
 					title = stringResource(R.string.novel_card_type_selector_title),
 					choices = stringArrayResource(R.array.novel_card_types).toList(),
 					repo = viewModel.settingsRepo,
-					key = SelectedNovelCardType
+					key = SelectedNovelCardType,
+					iconDescription = null
 				)
 			}
 
