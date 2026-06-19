@@ -752,5 +752,7 @@
 	<string name="search_error_ext_incompatible">Extension \'%s\'(%d) is incompatible! Ignoring it.</string>
 	<string name="search_error_ext_incomplete">Extension \'%s\'(%d) is incomplete! Ignoring it.</string>
 	<string name="search_error_ext_generic">Failed to load extension \'%s\'(%d). Ignoring it.</string>
+	<string name="worker_extension_install_error_network_retried">Network error \"%s\" when installing extension (\'%d\') \'%s\'.</string>
+	<string name="worker_extension_install_error_network">Network error \"%s\" when installing extension (\'%d\') \'%s\'.\nTrying again...</string>
 
 </resources>
