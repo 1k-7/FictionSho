@@ -26,12 +26,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import app.shosetsu.android.R
+import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.SettingKey.AppTheme
 import app.shosetsu.android.common.SettingKey.ChapterColumnsInLandscape
 import app.shosetsu.android.common.SettingKey.ChapterColumnsInPortait
 import app.shosetsu.android.common.SettingKey.NavStyle
 import app.shosetsu.android.common.SettingKey.NovelBadgeToast
 import app.shosetsu.android.common.SettingKey.SelectedNovelCardType
+import app.shosetsu.android.common.enums.NovelCardType
 import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.viewModelDi
 import app.shosetsu.android.view.compose.NavigateBackButton
@@ -206,6 +208,21 @@ fun AppearanceSettingsContent(
 					modifier = Modifier.fillMaxWidth(),
 					repo = viewModel.settingsRepo,
 					key = NavStyle
+				)
+			}
+
+			item {
+				SwitchSettingContent(
+					title = stringResource(R.string.settings_view_no_images_title),
+					description = stringResource(R.string.settings_view_no_images_desc),
+					modifier = Modifier.fillMaxWidth(),
+					repo = viewModel.settingsRepo,
+					key = SettingKey.NoImages,
+					andAlso = { newValue ->
+						if (newValue) {
+							viewModel.settingsRepo.setInt(SelectedNovelCardType, NovelCardType.COMPRESSED.toInt())
+						}
+					}
 				)
 			}
 		}

@@ -777,5 +777,7 @@
 	<string name="reader_error_tts_output">TTS failed to output.</string>
 	<string name="reader_error_tts_service">TTS service has failed.</string>
 	<string name="reader_error_tts_synthesis">TTS failed to synthesize given text.</string>
+	<string name="settings_view_no_images_title">No Images</string>
+	<string name="settings_view_no_images_desc">When enabled, no images will be shown for compressed novel cards, and novel card type will be set to "compressed".</string>
 
 </resources>

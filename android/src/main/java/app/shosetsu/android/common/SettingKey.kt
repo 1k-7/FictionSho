@@ -231,6 +231,11 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object SelectedNovelCardType : IntKey("novelCardType", 0)
 	object NavStyle : BooleanKey("legacy_navigation", false)
 
+	/**
+	 * When set to true, no images will be shown for compressed cards
+	 */
+	object NoImages : BooleanKey("no_images", false)
+
 	// Backup Options
 	object BackupStorageLocation : StringKey("backupStorageLocation", "")
 	object ShouldBackupChapters : BooleanKey("backupChapters", true)

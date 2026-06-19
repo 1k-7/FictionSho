@@ -16,7 +16,8 @@ fun SwitchSettingContent(
 	repo: ISettingsRepository,
 	key: SettingKey<Boolean>,
 	modifier: Modifier = Modifier,
-	enabled: Boolean = true
+	enabled: Boolean = true,
+	andAlso: suspend (newValue: Boolean) -> Unit = {}
 ) {
 	val value by repo.getBooleanFlow(key).collectAsState()
 	SwitchPreferenceWidget(
@@ -27,6 +28,9 @@ fun SwitchSettingContent(
 		enabled = enabled,
 		iconDescription = null
 	) { it: Boolean ->
-		launchIO { repo.setBoolean(key, it) }
+		launchIO {
+			repo.setBoolean(key, it)
+			andAlso(it)
+		}
 	}
 }

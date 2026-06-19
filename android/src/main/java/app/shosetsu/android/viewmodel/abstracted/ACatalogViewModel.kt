@@ -81,6 +81,11 @@ abstract class ACatalogViewModel :
 	abstract val novelCardTypeLive: StateFlow<NovelCardType>
 
 	/**
+	 * If images are to be shown or not
+	 */
+	abstract val showImages: StateFlow<Boolean>
+
+	/**
 	 * How many columns horizontally
 	 */
 	abstract val columnsInH: StateFlow<Int>

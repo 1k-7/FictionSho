@@ -12,6 +12,7 @@ import app.shosetsu.android.common.ext.launchIO
 import app.shosetsu.android.common.ext.logI
 import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.common.utils.copy
+import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.android.domain.usecases.NovelBackgroundAddUseCase
 import app.shosetsu.android.domain.usecases.SetNovelCategoriesUseCase
 import app.shosetsu.android.domain.usecases.get.GetCatalogueListingDataUseCase
@@ -89,6 +90,7 @@ class CatalogViewModel(
 	private val getExtListNames: GetExtListingNamesUseCase,
 	private val getExtSelectedListingFlow: GetExtSelectedListingFlowUseCase,
 	private val updateExtSelectedListing: UpdateExtSelectedListing,
+	private val settingsRepository: ISettingsRepository
 ) : ACatalogViewModel() {
 	override val queryFlow: MutableStateFlow<String> by lazy { MutableStateFlow("") }
 
@@ -449,6 +451,14 @@ class CatalogViewModel(
 		loadNovelUITypeUseCase().onIO()
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, NovelCardType.NORMAL)
 	}
+
+	override val showImages: StateFlow<Boolean> =
+		settingsRepository.getBooleanFlow(SettingKey.NoImages)
+			.map { !it }
+			.stateIn(
+				viewModelScopeIO,
+				SharingStarted.Lazily, true
+			)
 
 	override val columnsInH: StateFlow<Int> by lazy {
 		loadNovelUIColumnsHUseCase().onIO()

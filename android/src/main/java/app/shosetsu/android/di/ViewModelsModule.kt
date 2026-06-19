@@ -121,7 +121,8 @@ val viewModelsModule: DI.Module = DI.Module("view_models_module") {
 			loadNovelUIBadgeToast = instance(),
 			setNovelPin = instance(),
 			loadLibraryFilterSettings = instance(),
-			_updateLibraryFilterState = instance()
+			_updateLibraryFilterState = instance(),
+			settingsRepository = instance()
 		)
 	}
 
@@ -195,7 +196,8 @@ val viewModelsModule: DI.Module = DI.Module("view_models_module") {
 			setNovelCategoriesUseCase = instance(),
 			getExtListNames = instance(),
 			getExtSelectedListingFlow = instance(),
-			updateExtSelectedListing = instance()
+			updateExtSelectedListing = instance(),
+			settingsRepository = instance()
 		)
 	}
 
