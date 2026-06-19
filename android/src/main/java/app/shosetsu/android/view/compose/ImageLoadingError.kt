@@ -46,10 +46,12 @@ import kotlin.random.Random
  */
 
 @Composable
-fun ImageLoadingError(modifier: Modifier = Modifier) {
+fun ImageLoadingError(
+	modifier: Modifier = Modifier
+		.fillMaxSize()
+) {
 	Box(
 		modifier = modifier then Modifier
-			.fillMaxSize()
 			.background(Color(0x1F888888)),
 		contentAlignment = Alignment.Center
 	) {
@@ -63,7 +65,10 @@ fun ImageLoadingError(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ImageLoadingError(text: String?, modifier: Modifier = Modifier) {
+fun ImageLoadingError(
+	text: String?, modifier: Modifier = Modifier
+		.fillMaxSize()
+) {
 	if (text.isNullOrBlank()) {
 		ImageLoadingError(modifier)
 		return
@@ -82,7 +87,6 @@ fun ImageLoadingError(text: String?, modifier: Modifier = Modifier) {
 	var boxSize by remember { mutableStateOf(IntSize.Zero) }
 	Box(
 		modifier = modifier then Modifier
-			.fillMaxSize()
 			.background(background)
 			.onSizeChanged { boxSize = it }
 			.padding(horizontal = 2.dp),
