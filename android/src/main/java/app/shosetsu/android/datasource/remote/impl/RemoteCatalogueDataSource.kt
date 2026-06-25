@@ -1,5 +1,6 @@
 package app.shosetsu.android.datasource.remote.impl
 
+import app.shosetsu.android.common.InvalidListingIndex
 import app.shosetsu.android.common.ext.logD
 import app.shosetsu.android.datasource.remote.base.IRemoteCatalogueDataSource
 import app.shosetsu.lib.IExtension
@@ -7,6 +8,7 @@ import app.shosetsu.lib.Novel
 import app.shosetsu.lib.PAGE_INDEX
 import app.shosetsu.lib.QUERY_INDEX
 import app.shosetsu.lib.exceptions.HTTPException
+import okio.ArrayIndexOutOfBoundsException
 import org.luaj.vm2.LuaError
 import java.io.IOException
 
@@ -52,13 +54,20 @@ class RemoteCatalogueDataSource : IRemoteCatalogueDataSource {
 		} else emptyList()
 	}
 
-	@Throws(HTTPException::class, LuaError::class, IOException::class)
+	@Throws(HTTPException::class, LuaError::class, IOException::class, InvalidListingIndex::class)
 	override suspend fun loadListing(
 		ext: IExtension,
 		listingIndex: Int,
 		data: Map<Int, Any>,
 	): List<Novel.Info> {
-		val listing = ext.listings[listingIndex]
+		val listing: IExtension.Listing
+
+		try {
+			listing = ext.listings[listingIndex]
+		} catch (e: ArrayIndexOutOfBoundsException) {
+			// We are trying to get an invalid listing, handle this appropriately!
+			throw InvalidListingIndex(listingIndex, e)
+		}
 
 		logD(data.toString())
 
