@@ -205,24 +205,32 @@ class CatalogViewModel(
 		}.mapLatest { filterList ->
 			filterDataState.clear() // Reset filter state so no data conflicts occur
 			filterList.map { StableHolder(it) }.toImmutableList()
+		}.catch {
+			exceptionFlow.emit(it)
 		}.onIO().stateIn(viewModelScopeIO, SharingStarted.Eagerly, persistentListOf())
 	}
 
 	override val hasFilters: StateFlow<Boolean> by lazy {
 		iExtensionFlow.mapLatest { it?.searchFiltersModel?.isNotEmpty() ?: false }
-			.onIO()
+			.catch {
+				exceptionFlow.emit(it)
+			}.onIO()
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
 	}
 
 	override val hasSearchLive: StateFlow<Boolean> by lazy {
 		iExtensionFlow.mapLatest { it?.hasSearch ?: false }
-			.onIO()
+			.catch {
+				exceptionFlow.emit(it)
+			}.onIO()
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
 	}
 
 	override val extensionName: StateFlow<String> by lazy {
 		iExtensionFlow.mapLatest { it?.name ?: "" }
-			.onIO()
+			.catch {
+				exceptionFlow.emit(it)
+			}.onIO()
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, "")
 	}
 
@@ -243,12 +251,16 @@ class CatalogViewModel(
 						null
 					}
 				}
+		}.catch {
+			exceptionFlow.emit(it)
 		}.onIO()
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, null)
 	}
 
 	override val baseURL: StateFlow<String?> =
-		iExtensionFlow.map { it?.baseURL }
+		iExtensionFlow.map { it?.baseURL }.catch {
+			exceptionFlow.emit(it)
+		}
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, null)
 
 	override fun setExtensionID(extensionID: Int) {
@@ -305,21 +317,38 @@ class CatalogViewModel(
 		categories: IntArray
 	) {
 		launchIO {
+			// fyi, the function handles exceptions
+			_backgroundNovelAdd(item, categories)
+		}
+	}
+
+	/**
+	 * @see [ACatalogViewModel.backgroundNovelAdd]
+	 */
+	@Suppress("KDocMissingDocumentation", "FunctionName")
+	private suspend fun _backgroundNovelAdd(
+		item: ACatalogNovelUI,
+		categories: IntArray
+	) {
+		try {
 			logI("Adding novel to library in background: $item")
 			if (item.bookmarked) {
 				logI("Ignoring, already bookmarked: $item")
-				return@launchIO
+				return
 			}
 
+			// Notify that the novel is currently being added.
 			backgroundAddState.emit(BackgroundNovelAddProgress.Adding)
+
 			try {
 				backgroundAddUseCase(item.id)
 				if (categories.isNotEmpty())
 					setNovelCategoriesUseCase(item.id, categories)
 			} catch (e: Exception) {
 				backgroundAddState.emit(BackgroundNovelAddProgress.Failure(e))
-				return@launchIO
+				return
 			}
+
 			backgroundAddState.emit(
 				BackgroundNovelAddProgress.Added(
 					item.title.let {
@@ -330,11 +359,13 @@ class CatalogViewModel(
 				))
 			delay(100)
 			backgroundAddState.emit(BackgroundNovelAddProgress.Unknown)
+		} catch (e: Exception) {
+			exceptionFlow.emit(e)
 		}
 	}
 
-	override val backgroundAddState =
-		MutableStateFlow<BackgroundNovelAddProgress>(BackgroundNovelAddProgress.Unknown)
+	override val backgroundAddState: MutableStateFlow<BackgroundNovelAddProgress> =
+		MutableStateFlow(BackgroundNovelAddProgress.Unknown)
 
 	private val filterMutex = Mutex()
 
@@ -475,7 +506,7 @@ class CatalogViewModel(
 		}
 	}
 
-	override val isFilterMenuVisible = MutableStateFlow(false)
+	override val isFilterMenuVisible: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
 	override fun showFilterMenu() {
 		isFilterMenuVisible.value = true
@@ -487,7 +518,11 @@ class CatalogViewModel(
 
 	override fun setSelectedListing(value: Int) {
 		launchIO {
-			updateExtSelectedListing(extensionIDFlow.value, value)
+			try {
+				updateExtSelectedListing(extensionIDFlow.value, value)
+			} catch (e: Exception) {
+				exceptionFlow.emit(e)
+			}
 		}
 	}
 }
