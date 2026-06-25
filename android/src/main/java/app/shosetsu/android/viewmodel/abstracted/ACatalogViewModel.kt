@@ -8,7 +8,6 @@ import app.shosetsu.android.view.uimodels.model.CategoryUI
 import app.shosetsu.android.view.uimodels.model.catlog.ACatalogNovelUI
 import app.shosetsu.android.viewmodel.base.ShosetsuViewModel
 import app.shosetsu.lib.Filter
-import app.shosetsu.lib.IExtension
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,12 +43,21 @@ abstract class ACatalogViewModel :
 	 */
 	abstract val itemsLive: Flow<PagingData<ACatalogNovelUI>>
 
+	/**
+	 * Any exceptions collected internally to be shown to the user
+	 */
 	abstract val exceptionFlow: Flow<Throwable>
 
 	/**
 	 * The list of items that will be presented as the filter menu
 	 */
 	abstract val filterItemsLive: StateFlow<ImmutableList<StableHolder<Filter<*>>>>
+
+	/**
+	 * If this extension has filters or not.
+	 *
+	 * Controls if the filter button is visible or not
+	 */
 	abstract val hasFilters: StateFlow<Boolean>
 
 	/**
@@ -72,45 +80,86 @@ abstract class ACatalogViewModel :
 	 */
 	abstract val novelCardTypeLive: StateFlow<NovelCardType>
 
+	/**
+	 * How many columns horizontally
+	 */
 	abstract val columnsInH: StateFlow<Int>
+
+	/**
+	 * How many columns vertically
+	 */
 	abstract val columnsInV: StateFlow<Int>
 
+	/**
+	 * The categories available to add a novel to
+	 */
 	abstract val categories: StateFlow<ImmutableList<CategoryUI>>
 
 	/**
-	 * Sets the [IExtension]
+	 * Sets the extension to load.
 	 *
-	 * This will reset the view completely
+	 * This will reset the view completely when called.
+	 *
+	 * @param extensionID The id of the extension.
 	 */
 	abstract fun setExtensionID(extensionID: Int)
 
 	/**
-	 * Apply a query
+	 * Apply a query.
 	 *
-	 * This will reload the view
+	 * This will reload the view.
+	 *
+	 * @param newQuery The new query to load.
 	 */
 	abstract fun applyQuery(newQuery: String)
 
 	/**
-	 * Resets the view back to what it was when it first opened
+	 * Resets the view back to what it was when it first opened.
 	 */
 	abstract fun resetView()
 
 	/**
-	 * Bookmarks and loads the specific novel in the background
-	 * @param item ID of novel to load
+	 * Bookmarks and loads the specific novel in the background.
+	 *
+	 * @param item ID of novel to load.
+	 * @param categories The categories to add the novel to.
 	 */
 	abstract fun backgroundNovelAdd(
 		item: ACatalogNovelUI,
 		categories: IntArray = intArrayOf()
 	)
 
+	/**
+	 * The current state of adding a novel in the background.
+	 */
 	abstract val backgroundAddState: StateFlow<BackgroundNovelAddProgress>
 
+	/**
+	 * Represents the state of adding a novel in the background.
+	 */
 	sealed class BackgroundNovelAddProgress {
+		/**
+		 * Default state / Unknown state
+		 */
 		object Unknown : BackgroundNovelAddProgress()
+
+		/**
+		 * When a novel is being added...
+		 */
 		object Adding : BackgroundNovelAddProgress()
+
+		/**
+		 * The novel has been added.
+		 *
+		 * @param title The title of the novel that has been added.
+		 */
 		class Added(val title: String) : BackgroundNovelAddProgress()
+
+		/**
+		 * Failed to add the novel.
+		 *
+		 * @param error The reason why the novel failed to be added
+		 */
 		class Failure(val error: Exception) : BackgroundNovelAddProgress()
 	}
 
@@ -128,6 +177,11 @@ abstract class ACatalogViewModel :
 	 */
 	abstract fun resetFilter()
 
+	/**
+	 * The type of novel card shown to the user.
+	 *
+	 * @param cardType The type of card.
+	 */
 	abstract fun setViewType(cardType: NovelCardType)
 
 	abstract fun getFilterStringState(id: Filter<String>): Flow<String>
@@ -149,11 +203,24 @@ abstract class ACatalogViewModel :
 	 */
 	abstract fun clearCookies()
 
+	/**
+	 * Controls if the filter menu is visible or not
+	 */
 	abstract val isFilterMenuVisible: StateFlow<Boolean>
 
+	/**
+	 * When called, the filter will be shown.
+	 */
 	abstract fun showFilterMenu()
 
+	/**
+	 * When called, the filter will be hidden.
+	 */
 	abstract fun hideFilterMenu()
+
+	/**
+	 * The current query set to the extension.
+	 */
 	abstract val queryFlow: StateFlow<String>
 
 	/**
