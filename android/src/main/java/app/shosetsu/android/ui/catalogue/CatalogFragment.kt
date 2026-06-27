@@ -557,14 +557,14 @@ fun LazyGridScope.catalogListingSelection(
 	setListing: (selection: Int) -> Unit
 ) {
 	item(span = { GridItemSpan(maxLineSpan) }) {
-		AnimatedVisibility(listingSelectionData?.choices?.isNotEmpty() ?: false) {
+		AnimatedVisibility(listingSelectionData != null && listingSelectionData.choices.size > 1) {
 			if (listingSelectionData != null)
 				ListPreferenceWidget(
 					title = stringResource(R.string.fragment_catalogue_listing_selection_title),
 					subtitle = listingSelectionData.choices[listingSelectionData.selection],
 					value = listingSelectionData.selection,
 					entries = listingSelectionData.choices.withIndex()
-						.associate { it.index to it.value },
+						.associate { (index, value) -> index to value },
 					onValueChange = setListing,
 					isSubtitleTheValue = true,
 					icon = null,
