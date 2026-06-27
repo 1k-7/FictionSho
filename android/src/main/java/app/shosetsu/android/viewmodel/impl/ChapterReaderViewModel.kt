@@ -9,6 +9,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import app.shosetsu.android.R
+import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.SettingKey.ReaderDoubleTapFocus
 import app.shosetsu.android.common.SettingKey.ReaderDoubleTapSystem
 import app.shosetsu.android.common.SettingKey.ReaderEnableFullscreen
@@ -107,6 +108,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.acra.ACRA
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
@@ -318,6 +320,34 @@ class ChapterReaderViewModel(
 
 	private var cleanStringMapJob: Job? = null
 
+	/**
+	 * Try to deduplicate titles in the given [document]
+	 *
+	 * @param document The document to process
+	 */
+	private suspend fun tryToDedupTitles(document: Document) {
+		if (settingsRepo.getBoolean(SettingKey.ReaderDeDupChapterTitle)) {
+			logD("Trying to remove duplicate titles...")
+			try {
+				val titles = document.select("h1");
+				if (titles.size > 1) {
+					// Remove duplicate titles, in reverse
+					for (title in titles.subList(1, titles.size).reversed()) {
+						title.remove()
+					}
+				}
+			} catch (e: Exception) {
+				logE("Failed to remove duplicate titles", e)
+				exceptions.emit(
+					application.getString(
+						R.string.reader_error_dedup_titles,
+						e.message ?: "unknown"
+					)
+				)
+			}
+		}
+	}
+
 	override fun getChapterPassageHTML(item: ReaderChapterUI): Flow<ChapterPassage> {
 		val mutableFlow = stringMap.getOrPut(item.id) {
 			getRefreshFlow(item)
@@ -342,6 +372,8 @@ class ChapterReaderViewModel(
 					}
 
 					val document = Jsoup.parse(result)
+
+					tryToDedupTitles(document)
 
 					val ttsElements = document.body().select("*:not(:has(*)):not(br)")
 

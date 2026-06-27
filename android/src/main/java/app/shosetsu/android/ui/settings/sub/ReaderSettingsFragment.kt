@@ -53,6 +53,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.shosetsu.android.R
+import app.shosetsu.android.common.SettingKey
 import app.shosetsu.android.common.SettingKey.ChaptersResumeFirstUnread
 import app.shosetsu.android.common.SettingKey.ReaderKeepScreenOn
 import app.shosetsu.android.common.SettingKey.ReaderMarkReadAsReading
@@ -338,6 +339,17 @@ fun ReaderSettingsContent(
 					stringResource(R.string.settings_reader_keep_screen_on_desc),
 					viewModel.settingsRepo,
 					ReaderKeepScreenOn,
+					modifier = Modifier
+						.fillMaxWidth()
+				)
+			}
+
+			item {
+				SwitchSettingContent(
+					stringResource(R.string.settings_reader_dedup_titles),
+					stringResource(R.string.settings_reader_dedup_titles_desc),
+					viewModel.settingsRepo,
+					SettingKey.ReaderDeDupChapterTitle,
 					modifier = Modifier
 						.fillMaxWidth()
 				)

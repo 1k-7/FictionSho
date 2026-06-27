@@ -765,5 +765,8 @@
 	<string name="icon_desc_code"><![CDATA[An icon representing code, using the characters, in order, \"<>\".]]></string>
 	<string name="icon_desc_info">An icon with a circle with an \"i\" in the middle to represent information.</string>
 	<string name="icon_desc_image_search_roller">An icon of a paint roller, upright as if about to be used.</string>
+	<string name="settings_reader_dedup_titles">Deduplicate Titles</string>
+	<string name="settings_reader_dedup_titles_desc">Drop any duplicate titles (\"h1\"s) after the first one.\nThis does not work when chapter titles are any other element than an "h1".</string>
+	<string name="reader_error_dedup_titles">Failed to deduplicate titles because \'%s\'</string>
 
 </resources>

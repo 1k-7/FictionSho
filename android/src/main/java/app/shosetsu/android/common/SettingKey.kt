@@ -156,6 +156,11 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 
 	object ReaderSpeed : FloatKey("reader_speed_2", 10f)
 
+	/**
+	 * When true, will automatically prune any duplicate
+	 */
+	object ReaderDeDupChapterTitle : BooleanKey("dedup_h1", true)
+
 	// Download options
 	object IsDownloadPaused : BooleanKey("isDownloadPaused", false)
 
