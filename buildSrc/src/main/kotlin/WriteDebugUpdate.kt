@@ -22,6 +22,11 @@ abstract class WriteDebugUpdate : DefaultTask() {
 		}
 	}
 
+	private val jsonSerializer = Json {
+		prettyPrint = true
+		this.prettyPrintIndent = "\t"
+	}
+
 	@get:InputDirectory
 	abstract val gitDir: DirectoryProperty
 
@@ -70,7 +75,7 @@ abstract class WriteDebugUpdate : DefaultTask() {
 						.map { it.trim() }
 						.filter { it.isNotBlank() }
 						.map { it.replace("\"", "'") }
-						.joinToString("\n\t\t\t\t") { "- $it," }
+						.joinToString("\n\t") { "- $it," }
 						.removeSuffix(",")
 				}
 
@@ -81,6 +86,8 @@ abstract class WriteDebugUpdate : DefaultTask() {
 			)
 		}
 
-		file.outputStream().use { Json.encodeToStream(update, it) }
+		file.outputStream().use {
+			jsonSerializer.encodeToStream(update, it)
+		}
 	}
 }
