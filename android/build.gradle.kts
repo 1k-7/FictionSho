@@ -21,8 +21,8 @@ android {
 		applicationId = "app.shosetsu.android"
 		minSdk = 22
 		targetSdk = 36
-		versionCode = 48
-		versionName = "2.5.0"
+		versionCode = 49
+		versionName = "2.5.1"
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 		multiDexEnabled = true
 
