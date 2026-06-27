@@ -768,5 +768,14 @@
 	<string name="settings_reader_dedup_titles">Deduplicate Titles</string>
 	<string name="settings_reader_dedup_titles_desc">Drop any duplicate titles (\"h1\"s) after the first one.\nThis does not work when chapter titles are any other element than an "h1".</string>
 	<string name="reader_error_dedup_titles">Failed to deduplicate titles because \'%s\'</string>
+	<string name="reader_error_unknown">Unknown error.</string>
+	<string name="reader_error_tts_generic">Generic TTS failure occurred.</string>
+	<string name="reader_error_tts_invalid_request">TTS failed due to an invalid request.</string>
+	<string name="reader_error_tts_network">TTS failed due to network problems.</string>
+	<string name="reader_error_network_timeout">TTS failed due to a network timeout.</string>
+	<string name="reader_error_tts_not_installed">TTS failed due to not being installed yet.</string>
+	<string name="reader_error_tts_output">TTS failed to output.</string>
+	<string name="reader_error_tts_service">TTS service has failed.</string>
+	<string name="reader_error_tts_synthesis">TTS failed to synthesize given text.</string>
 
 </resources>
