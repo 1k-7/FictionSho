@@ -3,7 +3,6 @@ package app.shosetsu.android.datasource.local.file.impl
 import app.shosetsu.android.common.FileNotFoundException
 import app.shosetsu.android.common.FilePermissionException
 import app.shosetsu.android.common.consts.FILE_LIBRARY_DIR
-import app.shosetsu.android.common.consts.FILE_SOURCE_DIR
 import app.shosetsu.android.common.enums.InternalFileDir.FILES
 import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.logV
@@ -38,7 +37,7 @@ class FileExtLibDataSource(
 	init {
 		logV("Creating required directories")
 		try {
-			iFileSystemProvider.createDirectory(FILES, "$FILE_SOURCE_DIR$FILE_LIBRARY_DIR")
+			iFileSystemProvider.createDirectory(FILES, FILE_LIBRARY_DIR)
 			logV("Created required directories")
 		} catch (e: Exception) {
 			logE("Error on creation of directories", e)
@@ -47,7 +46,7 @@ class FileExtLibDataSource(
 
 
 	private fun makeLibraryFile(fileName: String): String =
-		"$FILE_SOURCE_DIR$FILE_LIBRARY_DIR$fileName.lua"
+		"$FILE_LIBRARY_DIR$fileName.lua"
 
 	@Throws(FilePermissionException::class, IOException::class)
 	override suspend fun writeExtLib(fileName: String, data: String) {
