@@ -78,7 +78,7 @@ class ExtensionsRepository(
 								matchingExtensions.find { it.repoID == installedExt.repoID }?.version
 
 							if (repoVersion != null) {
-								installedExt.version < repoVersion
+								installedExt.version < repoVersion || repoVersion == Version(-9, -9, -9)
 							} else false
 						} else false,
 						updateVersion = matchingExtensions.find { it.repoID == installedExt?.repoID }?.version,
