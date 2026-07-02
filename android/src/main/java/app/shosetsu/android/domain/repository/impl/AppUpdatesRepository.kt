@@ -76,34 +76,19 @@ class AppUpdatesRepository(
 			}
 
 			else -> {
-				val currentV: Int
-				val remoteV: Int
+				val currentVersion: Int
+				val remoteVersion: Int
 
 				// Assuming update will return a dev update for debug, only on standard
 				if (flavor() == ProductFlavors.STANDARD && BuildConfig.DEBUG) {
-					currentV = BuildConfig.VERSION_NAME.substringAfter("-").toInt()
-					remoteV = newVersion.commit.takeIf { it != -1 } ?: newVersion.version.toInt()
+					currentVersion = BuildConfig.VERSION_NAME.substringAfter("-").toInt()
+					remoteVersion = newVersion.commit.takeIf { it != -1 } ?: newVersion.version.toInt()
 				} else {
-					currentV = BuildConfig.VERSION_CODE
-					remoteV = newVersion.versionCode
+					currentVersion = BuildConfig.VERSION_CODE
+					remoteVersion = newVersion.versionCode
 				}
 
-				return when {
-					remoteV < currentV -> {
-						//println("This a future release compared to $newVersion")
-						-1
-					}
-
-					remoteV > currentV -> {
-						//println("Update found compared to $newVersion")
-						1
-					}
-
-					else -> {
-						//println("This the current release compared to $newVersion")
-						0
-					}
-				}
+				return remoteVersion.compareTo(currentVersion)
 			}
 		}
 	}
