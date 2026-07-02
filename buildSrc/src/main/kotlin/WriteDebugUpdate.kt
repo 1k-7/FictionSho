@@ -45,6 +45,7 @@ abstract class WriteDebugUpdate : DefaultTask() {
 	@Serializable
 	private data class DebugUpdate(
 		val latestVersion: String,
+		val commit: Int,
 		val url: String,
 		val releaseNotes: List<String>
 	)
@@ -81,6 +82,7 @@ abstract class WriteDebugUpdate : DefaultTask() {
 
 			DebugUpdate(
 				latestVersion = commitCount.toString(),
+				commit = commitCount,
 				url = "https://cdn.shosetsu.app/debug/r$commitCount/shosetsu-r$commitCount.apk",
 				releaseNotes
 			)
