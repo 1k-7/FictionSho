@@ -81,4 +81,8 @@ class ExtensionLibrariesRepository(
 			return data
 		}
 	}
+
+	override suspend fun update(entity: ExtLibEntity) {
+		databaseSource.updateOrInsert(entity)
+	}
 }
