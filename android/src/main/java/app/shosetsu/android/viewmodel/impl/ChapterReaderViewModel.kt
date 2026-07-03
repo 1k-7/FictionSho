@@ -1127,68 +1127,125 @@ class ChapterReaderViewModel(
 		viewModelScopeIO.launch {
 			var oldTts: TextToSpeech? = null
 			currentChapterID.collectLatest { chapterId ->
+				logV("chapterId='$chapterId'")
+
 				// Child scope is cancelled when the chapter is changed
 				coroutineScope {
 					// Clear out old TTS
+					logD("Clearing old TTS")
 					oldTts?.stop() // we ignore error codes here, its going away
 					oldTts = null
 
 					// Find the current chapter
+					logD("Finding current chapter")
 					val item = liveData.first { it != null }
 						?.find { (it as? ReaderChapterUI)?.id == chapterId }
-						as? ReaderChapterUI ?: return@coroutineScope
+						as? ReaderChapterUI
+
+					if (item == null) {
+						logD("Failed to find the current chapter, giving up")
+						return@coroutineScope
+					}
 
 					// Clean up memory asap
+					logD("Clearing memory")
 					System.gc()
 
 					// Get the text of the chapter
+					logD("Getting next chapter text")
 					val passage = getChapterPassageHTML(item)
 						.firstOrNull { it is ChapterPassage.Success } as? ChapterPassage.Success
-						?: return@coroutineScope
 
+					if (passage == null) {
+						logD("Failed to get chapter passage, giving up")
+						return@coroutineScope
+					}
+
+					logD("Launching next chapter watcher")
 					launch nextChapterTts@{
+						logD("Next Chapter TTS job has started, waiting for lastTTS")
 						val lastTts =
 							passage.ttsElements.lastOrNull()
-								?: return@nextChapterTts
+
+						if (lastTts == null) {
+							logD("Last TTS is null, giving up")
+							return@nextChapterTts
+						}
+
+						logV("Last TTS element='$lastTts'")
 
 						// If the user enables the setting while in the reader, we can listen in
 						ttsNextChapter.collectLatest nextChapterTts2@{ ttsNextChapter ->
+							logV("Arguments: ttsNextChapter='$ttsNextChapter'")
 							// skip if disabled
 							if (!ttsNextChapter) {
+								logD("ttsNextChapter disabled")
 								return@nextChapterTts2
 							}
 
 							// Wait for the last TTS line to be spoken to move to the next chapter
-							ttsDone.firstOrNull { it != null && it == lastTts.id }
-								?: return@nextChapterTts2
+							val result = ttsDone.firstOrNull { it != null && it == lastTts.id }
+
+							if (result == null) {
+								logD("Failed to get to last TTS element, giving up")
+								return@nextChapterTts2
+							}
+
+							logD("Last TTS element reached")
 
 							// Get current readerUIItems
 							val readerUIItems =
-								liveData.first { it != null } ?: return@nextChapterTts2
+								liveData.first { it != null }
+
+							if (readerUIItems == null) {
+								logD("ReaderUIItems is null")
+								return@nextChapterTts2
+							}
+
+							logV("readerUIItems='$readerUIItems'")
 
 							val chapterItems = readerUIItems.filterIsInstance<ReaderChapterUI>()
+
+							logV("chapterItems='$chapterItems'")
 
 							// Find index of the current chapter
 							val index = chapterItems.indexOfFirst { it.id == chapterId }
 
+							logV("index='$index'")
+
 							// ensure we got a valid index
 							if (index >= 0) {
+								logD("We got a valid index!")
 								// Find next chapter
 								val nextChapter = chapterItems
 									.getOrNull(index + 1) // Attempt to get next chapter
-									?: return@nextChapterTts2
+
+								if (nextChapter == null) {
+									logD("next chapter is null, not going over")
+									return@nextChapterTts2
+								}
+
+								logV("nextChapter='$nextChapter'")
 
 								// Jump to the next chapter
+								logD("Moving to next chapter")
 								pageJumper.emit(readerUIItems.indexOf(nextChapter))
 								viewModelScopeIO.launch {
+									logD("Cleaning up memory")
 									System.gc() // Clear out heavy operation (above)
+									logD("Set the nextChapter as read")
 									onViewed(nextChapter)
+									logD("Set the nextChapter as the current")
 									setCurrentChapterID(nextChapter.id)
+
 									// Start the TTS again
+									logD("Starting up TTS again with a delay")
 									withTimeoutOrNull(5.seconds) {
+										logD("Waiting for TTS to be stopped")
 										if (
 											ttsPlayback.firstOrNull { it == TTSPlayback.Stopped } != null
 										) {
+											logD("TTS has been stopped, starting it for nextChapter")
 											onPlayTts()
 										}
 									}
@@ -1197,20 +1254,27 @@ class ChapterReaderViewModel(
 						}
 					}
 
+					logD("Starting TTS collector")
 					tts.collectLatest { tts ->
+						logV("Arguments: tts='$tts'")
 						if (tts == null) {
+							logD("TTS is null, clearing old TTS and returning.")
 							oldTts?.stop() // ignore result
 							oldTts = null
 							@Suppress("LABEL_NAME_CLASH")
 							return@collectLatest
 						}
+						logD("Clearing out old TTS and setting new as old")
 						oldTts?.stop() // ignore result
 						oldTts = tts
 
 						// Are we playing TTS?
 						ttsPlayback.collectLatest { playback ->
+							logV("Arguments: playback='$playback'")
+
 							// if we are not playing, make sure the TTS is stopped
 							if (playback != TTSPlayback.Playing) {
+								logD("Ensuring TTS is stopped in sync with UI state")
 								tts.stop().let(::launchHandleTTSError)
 								@Suppress("LABEL_NAME_CLASH")
 								return@collectLatest
@@ -1218,9 +1282,12 @@ class ChapterReaderViewModel(
 
 							// child scope is killed off if the parent dies
 							coroutineScope {
+								logD("Syncing TTS iterator")
 								syncTTSIterator(passage.ttsElements)
+
 								// For each element, lets speak it out
 								passage.ttsElements.forEachRemaining {
+									logV("Processing element: it='$it'")
 									if (!it.ignore)
 										customSpeak(
 											tts,
