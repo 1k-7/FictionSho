@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +80,7 @@ import app.shosetsu.android.viewmodel.abstracted.ACatalogViewModel.BackgroundNov
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 import org.acra.ACRA
 
 /*
@@ -143,43 +145,50 @@ fun CatalogueView(
 	val isFilterMenuVisible by viewModel.isFilterMenuVisible.collectAsState()
 	val listingSelectionData by viewModel.listingSelectionData.collectAsState()
 
+	val scope = rememberCoroutineScope()
 	val context = LocalContext.current
 	val hostState = remember { SnackbarHostState() }
 	var categoriesDialogItem by remember { mutableStateOf<ACatalogNovelUI?>(null) }
 
 	LaunchedEffect(backgroundAddState) {
-		when (backgroundAddState) {
+		when (val backgroundAddState = backgroundAddState) {
 			is Added -> {
-				hostState.showSnackbar(
-					context.getString(
-						R.string.fragment_catalogue_toast_background_add_success,
-						(backgroundAddState as Added).title
+				scope.launch {
+					hostState.showSnackbar(
+						context.getString(
+							R.string.fragment_catalogue_toast_background_add_success,
+							backgroundAddState.title
+						)
 					)
-				)
+				}
 			}
 
 			Adding -> {
-				hostState.showSnackbar(
-					context.getString(
-						R.string.fragment_catalogue_toast_background_add
+				scope.launch {
+					hostState.showSnackbar(
+						context.getString(
+							R.string.fragment_catalogue_toast_background_add
+						)
 					)
-				)
+				}
 			}
 
 			is BackgroundNovelAddProgress.Failure -> {
-				val error = (backgroundAddState as BackgroundNovelAddProgress.Failure).error
+				scope.launch {
+					val error = backgroundAddState.error
 
-				val result = hostState.showSnackbar(
-					context.getString(
-						R.string.fragment_catalogue_toast_background_add_fail,
-						error.message
-							?: "Unknown exception"
-					),
-					actionLabel = context.getString(R.string.report)
-				)
+					val result = hostState.showSnackbar(
+						context.getString(
+							R.string.fragment_catalogue_toast_background_add_fail,
+							error.message
+								?: "Unknown exception"
+						),
+						actionLabel = context.getString(R.string.report)
+					)
 
-				if (result == SnackbarResult.ActionPerformed) {
-					ACRA.errorReporter.handleSilentException(error)
+					if (result == SnackbarResult.ActionPerformed) {
+						ACRA.errorReporter.handleSilentException(error)
+					}
 				}
 			}
 
@@ -189,13 +198,16 @@ fun CatalogueView(
 	}
 
 	LaunchedEffect(exception) {
+		val exception = exception
 		if (exception != null) {
-			val result = hostState.showSnackbar(
-				exception?.message ?: "Unknown error",
-				actionLabel = context.getString(R.string.reset)
-			)
-			if (result == SnackbarResult.ActionPerformed) {
-				viewModel.resetView()
+			scope.launch {
+				val result = hostState.showSnackbar(
+					exception.message ?: "Unknown error",
+					actionLabel = context.getString(R.string.reset)
+				)
+				if (result == SnackbarResult.ActionPerformed) {
+					viewModel.resetView()
+				}
 			}
 		}
 	}
@@ -203,26 +215,32 @@ fun CatalogueView(
 	val prepend = items.loadState.prepend
 
 	LaunchedEffect(prepend) {
+		val prepend = prepend
 		if (prepend is LoadState.Error) {
-			val result = hostState.showSnackbar(
-				prepend.error.message ?: "Unknown error",
-				actionLabel = context.getString(R.string.retry)
-			)
-			if (result == SnackbarResult.ActionPerformed) {
-				items.retry()
+			scope.launch {
+				val result = hostState.showSnackbar(
+					prepend.error.message ?: "Unknown error",
+					actionLabel = context.getString(R.string.retry)
+				)
+				if (result == SnackbarResult.ActionPerformed) {
+					items.retry()
+				}
 			}
 		}
 	}
 
 	val append = items.loadState.append
 	LaunchedEffect(append) {
+		val append = append
 		if (append is LoadState.Error) {
-			val result = hostState.showSnackbar(
-				append.error.message ?: "Unknown error",
-				actionLabel = context.getString(R.string.retry)
-			)
-			if (result == SnackbarResult.ActionPerformed) {
-				items.retry()
+			scope.launch {
+				val result = hostState.showSnackbar(
+					append.error.message ?: "Unknown error",
+					actionLabel = context.getString(R.string.retry)
+				)
+				if (result == SnackbarResult.ActionPerformed) {
+					items.retry()
+				}
 			}
 		}
 	}

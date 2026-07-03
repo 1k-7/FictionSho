@@ -197,6 +197,7 @@ fun NovelInfoView(
 	val showTrueDelete by viewModel.showTrueDelete.collectAsState()
 	val openLastReadResult by viewModel.openLastReadResult.collectAsState(null)
 
+	val scope = rememberCoroutineScope()
 	val hostState = remember { SnackbarHostState() }
 	val context = LocalContext.current
 	val resources = LocalResources.current
@@ -312,24 +313,28 @@ fun NovelInfoView(
 	}
 
 	LaunchedEffect(toggleBookmarkResponse) {
+		val toggleBookmarkResponse = toggleBookmarkResponse
 		if (toggleBookmarkResponse is ToggleBookmarkResponse.DeleteChapters) {
-			val chaptersToDelete =
-				(toggleBookmarkResponse as ToggleBookmarkResponse.DeleteChapters).chapters
-			val result = hostState.showSnackbar(
-				try {
-					resources.getQuantityString(
-						R.plurals.fragment_novel_toggle_delete_chapters,
-						chaptersToDelete,
-						chaptersToDelete
-					)
-				} catch (e: Resources.NotFoundException) {
-					"Delete $chaptersToDelete chapters?"
-				},
-				actionLabel = context.getString(R.string.delete)
-			)
+			scope.launch {
+				val chaptersToDelete =
+					toggleBookmarkResponse.chapters
 
-			if (result == SnackbarResult.ActionPerformed) {
-				viewModel.deleteChapters()
+				val result = hostState.showSnackbar(
+					try {
+						resources.getQuantityString(
+							R.plurals.fragment_novel_toggle_delete_chapters,
+							chaptersToDelete,
+							chaptersToDelete
+						)
+					} catch (e: Resources.NotFoundException) {
+						"Delete $chaptersToDelete chapters?"
+					},
+					actionLabel = context.getString(R.string.delete)
+				)
+
+				if (result == SnackbarResult.ActionPerformed) {
+					viewModel.deleteChapters()
+				}
 			}
 		}
 	}
@@ -338,13 +343,15 @@ fun NovelInfoView(
 		when (jumpState) {
 			JumpState.UNKNOWN -> {}
 			JumpState.FAILURE -> {
-				val result = hostState.showSnackbar(
-					context.getString(R.string.toast_error_chapter_jump_invalid_target),
-					actionLabel = context.getString(R.string.generic_question_retry)
-				)
+				scope.launch {
+					val result = hostState.showSnackbar(
+						context.getString(R.string.toast_error_chapter_jump_invalid_target),
+						actionLabel = context.getString(R.string.generic_question_retry)
+					)
 
-				if (result == SnackbarResult.ActionPerformed) {
-					viewModel.showChapterJumpDialog()
+					if (result == SnackbarResult.ActionPerformed) {
+						viewModel.showChapterJumpDialog()
+					}
 				}
 			}
 		}

@@ -155,19 +155,24 @@ fun ChapterReaderContent(
 	)
 
 	LaunchedEffect(exception) {
+		val exception = exception
 		if (exception != null) {
 			// We can only show reporting if ACRA is initialized
 			if (exception.exception != null && ACRA.isInitialised) {
-				val result = scaffoldState.snackbarHostState.showSnackbar(
-					exception.displayText,
-					actionLabel = context.getString(R.string.report)
-				)
+				scope.launch {
+					val result = scaffoldState.snackbarHostState.showSnackbar(
+						exception.displayText,
+						actionLabel = context.getString(R.string.report)
+					)
 
-				if (result == SnackbarResult.ActionPerformed) {
-					ACRA.errorReporter.handleException(exception.exception, false)
+					if (result == SnackbarResult.ActionPerformed) {
+						ACRA.errorReporter.handleException(exception.exception, false)
+					}
 				}
 			} else {
-				scaffoldState.snackbarHostState.showSnackbar(exception.displayText)
+				scope.launch {
+					scaffoldState.snackbarHostState.showSnackbar(exception.displayText)
+				}
 			}
 		}
 	}
