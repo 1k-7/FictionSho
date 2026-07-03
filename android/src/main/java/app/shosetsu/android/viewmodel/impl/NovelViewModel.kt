@@ -401,6 +401,16 @@ class NovelViewModel(
 		emit(novelLive.first { it != null }?.let {
 			getContentURL(it)
 		})
+	}.catch { t ->
+		exceptions.emit(
+			ExceptionSnackbarModel(
+				application.getString(
+					R.string.view_novel_error_url_load,
+					t.message ?: application.getString(R.string.unknown)
+				),
+				t
+			)
+		)
 	}.onIO().stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
 	override val shareInfo: StateFlow<NovelShareInfo?> =
