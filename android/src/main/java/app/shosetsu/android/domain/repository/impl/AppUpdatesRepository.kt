@@ -7,6 +7,7 @@ import app.shosetsu.android.common.FilePermissionException
 import app.shosetsu.android.common.MissingFeatureException
 import app.shosetsu.android.common.enums.ProductFlavors
 import app.shosetsu.android.common.ext.launchIO
+import app.shosetsu.android.common.ext.logD
 import app.shosetsu.android.common.ext.logE
 import app.shosetsu.android.common.ext.logV
 import app.shosetsu.android.common.ext.onIO
@@ -57,7 +58,14 @@ class AppUpdatesRepository(
 	init {
 		launchIO {
 			try {
-				appUpdate.emit(iFileAppUpdateDataSource.load())
+				val update = iFileAppUpdateDataSource.load()
+				if (compareVersion(update) > 0) {
+					logD("Update file found, notifying user")
+					appUpdate.emit(update)
+				} else {
+					logD("Deleting the old update file")
+					iFileAppUpdateDataSource.delete()
+				}
 			} catch (ignore: Exception) {
 				// If it doesn't work, meh!
 			}
