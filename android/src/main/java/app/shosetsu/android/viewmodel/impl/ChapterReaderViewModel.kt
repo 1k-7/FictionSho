@@ -1063,6 +1063,7 @@ class ChapterReaderViewModel(
 			it.setOnUtteranceProgressListener(
 				object : UtteranceProgressListener() {
 					override fun onStart(utteranceId: String?) {
+						logV("Arguments: utteranceId='$utteranceId'")
 						// Only set progress if not stopped
 						if (ttsPlayback.value != TTSPlayback.Stopped) {
 							ttsProgress.value = utteranceId?.substringBefore('|')
@@ -1070,6 +1071,7 @@ class ChapterReaderViewModel(
 					}
 
 					override fun onDone(utteranceId: String?) {
+						logV("Arguments: utteranceId='$utteranceId'")
 						ttsDone.value = utteranceId
 					}
 
@@ -1078,6 +1080,7 @@ class ChapterReaderViewModel(
 					}
 
 					override fun onError(utteranceId: String?, errorCode: Int) {
+						logV("Arguments: utteranceId='$utteranceId', errorCode=`$errorCode`")
 						this@ChapterReaderViewModel.logE("TTS Error code: $errorCode")
 						ttsPlayback.value = TTSPlayback.Paused
 					}

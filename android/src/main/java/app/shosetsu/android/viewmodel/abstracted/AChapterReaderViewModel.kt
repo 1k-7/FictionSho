@@ -180,7 +180,15 @@ abstract class AChapterReaderViewModel :
 	abstract fun clearMemory()
 
 	abstract val pageJumper: SharedFlow<Int>
+
+	/**
+	 * Contains the utterance ID that is currently being spoken
+	 */
 	abstract val ttsProgress: StateFlow<String?>
+
+	/**
+	 * State of the TTS playback
+	 */
 	abstract val ttsPlayback: StateFlow<TTSPlayback>
 	abstract fun onPlayTts()
 	abstract fun onPauseTts()
