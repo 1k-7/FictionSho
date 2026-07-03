@@ -776,10 +776,13 @@ class ChapterReaderViewModel(
 	}
 
 	override fun onReaderClicked(item: String?) {
+		logV("Arguments: item='$item'")
 		if (item != null && ttsPlayback.value == TTSPlayback.Paused) {
+			logD("Moving progress")
 			ttsProgress.value = item.substringAfter("textElement")
 			ttsPlayback.value = TTSPlayback.Playing
 		} else if (!doubleTapFocus.value) {
+			logD("Changing focus")
 			val newValue = !isFocused.value
 			isFocused.value = newValue
 			if (newValue || matchFullscreenToFocus.value)

@@ -112,6 +112,9 @@ abstract class AChapterReaderViewModel :
 	abstract fun toggleFocus()
 	abstract fun toggleSystemVisible()
 
+	/**
+	 * Called when the user clicks
+	 */
 	abstract fun onReaderClicked(item: String?)
 	abstract fun onReaderDoubleClicked()
 
