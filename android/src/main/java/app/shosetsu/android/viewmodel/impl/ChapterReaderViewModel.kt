@@ -1256,52 +1256,65 @@ class ChapterReaderViewModel(
 
 					logD("Starting TTS collector")
 					tts.collectLatest { tts ->
-						logV("Arguments: tts='$tts'")
-						if (tts == null) {
-							logD("TTS is null, clearing old TTS and returning.")
-							oldTts?.stop() // ignore result
-							oldTts = null
-							@Suppress("LABEL_NAME_CLASH")
-							return@collectLatest
-						}
-						logD("Clearing out old TTS and setting new as old")
-						oldTts?.stop() // ignore result
-						oldTts = tts
-
-						// Are we playing TTS?
-						ttsPlayback.collectLatest { playback ->
-							logV("Arguments: playback='$playback'")
-
-							// if we are not playing, make sure the TTS is stopped
-							if (playback != TTSPlayback.Playing) {
-								logD("Ensuring TTS is stopped in sync with UI state")
-								tts.stop().let(::launchHandleTTSError)
-								@Suppress("LABEL_NAME_CLASH")
-								return@collectLatest
-							}
-
-							// child scope is killed off if the parent dies
-							coroutineScope {
-								logD("Syncing TTS iterator")
-								syncTTSIterator(passage.ttsElements)
-
-								// For each element, lets speak it out
-								passage.ttsElements.forEachRemaining {
-									logV("Processing element: it='$it'")
-									if (!it.ignore)
-										customSpeak(
-											tts,
-											it.text,
-											it.id,
-											::launchHandleTTSError
-										)
-								}
-							}
-						}
+						onLatestTTS(tts, oldTts, setOldTts = { oldTts = it }, passage)
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Called whenever a new TTS engine is loaded
+	 */
+	private suspend fun onLatestTTS(
+		tts: TextToSpeech?,
+		oldTts: TextToSpeech?,
+		setOldTts: (TextToSpeech?) -> Unit,
+		passage: ChapterPassage.Success
+	) {
+		logV("Arguments: tts='$tts'")
+		if (tts == null) {
+			logD("TTS is null, clearing old TTS and returning.")
+			oldTts?.stop() // ignore result
+			setOldTts(null)
+			@Suppress("LABEL_NAME_CLASH")
+			return
+		}
+		logD("Clearing out old TTS and setting new as old")
+		oldTts?.stop() // ignore result
+		setOldTts(tts)
+
+		// Are we playing TTS?
+		ttsPlayback.collectLatest { playback ->
+			logV("Arguments: playback='$playback'")
+
+			// if we are not playing, make sure the TTS is stopped
+			if (playback != TTSPlayback.Playing) {
+				logD("Ensuring TTS is stopped in sync with UI state")
+				tts.stop().let(::launchHandleTTSError)
+				@Suppress("LABEL_NAME_CLASH")
+				return@collectLatest
+			}
+
+			// child scope is killed off if the parent dies
+			coroutineScope {
+				logD("Syncing TTS iterator")
+				syncTTSIterator(passage.ttsElements)
+
+				// For each element, lets speak it out
+				passage.ttsElements.forEachRemaining {
+					logV("Processing element: it='$it'")
+					if (!it.ignore)
+						customSpeak(
+							tts,
+							it.text,
+							it.id,
+							::launchHandleTTSError
+						)
+				}
+			}
+		}
+
 	}
 
 	@Throws(NoSuchElementException::class)
