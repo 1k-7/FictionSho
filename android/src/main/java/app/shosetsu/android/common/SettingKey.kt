@@ -107,6 +107,11 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object ReaderMatchFullscreenToFocus : BooleanKey("reader_match_fullscreen_focus", false)
 
 	/**
+	 * If the user has been shown the reader tts click hint
+	 */
+	object ReaderTTSClickHintShown : BooleanKey("reader_tts_hint_shown", false)
+
+	/**
 	 * User customization for CSS in html reader
 	 */
 	object ReaderHtmlCss : StringKey(

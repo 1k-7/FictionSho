@@ -174,6 +174,8 @@ class ChapterReaderViewModel(
 
 	override val exceptions: MutableSharedFlow<ExceptionSnackbarModel> = MutableSharedFlow()
 
+	override val showTTSClickHint: MutableSharedFlow<Boolean> = MutableSharedFlow()
+
 	override val isReadingTooLong: MutableStateFlow<Boolean> by lazy {
 		MutableStateFlow(false)
 	}
@@ -775,13 +777,42 @@ class ChapterReaderViewModel(
 		_isSystemVisible.value = !_isSystemVisible.value
 	}
 
+	private val readerTTSClickHintShown =
+		settingsRepo.getBooleanFlow(SettingKey.ReaderTTSClickHintShown)
+
 	override fun onReaderClicked(item: String?) {
 		logV("Arguments: item='$item'")
-		if (item != null && ttsPlayback.value == TTSPlayback.Paused) {
-			logD("Moving progress")
-			ttsProgress.value = item.substringAfter("textElement")
-			ttsPlayback.value = TTSPlayback.Playing
-		} else if (!doubleTapFocus.value) {
+		// If there is an item, perform the consumption logic
+		if (item != null) {
+			// Check the state of the TTS reader
+			if (ttsPlayback.value == TTSPlayback.Paused) {
+				logD("Moving progress")
+
+				// Set the new progress position
+				ttsProgress.value = item.substringAfter("textElement")
+
+				// Start the TTS again
+				ttsPlayback.value = TTSPlayback.Playing
+
+				// Return to prevent further logic
+				return
+			} else if (ttsPlayback.value == TTSPlayback.Playing && !readerTTSClickHintShown.value) {
+				logD("Telling the user a hint")
+
+				launchUI {
+					// Show the hint
+					showTTSClickHint.emit(true)
+
+					// Never show the hint again
+					settingsRepo.setBoolean(SettingKey.ReaderTTSClickHintShown, true)
+				}
+
+				// Return to prevent further logic
+				return
+			}
+		}
+
+		if (!doubleTapFocus.value) {
 			logD("Changing focus")
 			val newValue = !isFocused.value
 			isFocused.value = newValue

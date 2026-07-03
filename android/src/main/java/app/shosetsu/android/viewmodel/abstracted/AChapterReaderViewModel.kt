@@ -50,6 +50,11 @@ abstract class AChapterReaderViewModel :
 	abstract val exceptions: SharedFlow<ExceptionSnackbarModel>
 
 	/**
+	 * If the TTS click hint is to be shown to the user or not
+	 */
+	abstract val showTTSClickHint: SharedFlow<Boolean>
+
+	/**
 	 * Has the user been reading for too long?
 	 *
 	 * If so, then the user will be notified
@@ -114,6 +119,7 @@ abstract class AChapterReaderViewModel :
 
 	/**
 	 * Called when the user clicks
+	 * @param item The UUID of the TTS item
 	 */
 	abstract fun onReaderClicked(item: String?)
 	abstract fun onReaderDoubleClicked()
