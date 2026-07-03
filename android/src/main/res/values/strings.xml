@@ -783,5 +783,6 @@
 	<string name="update_label_commit">Commit: %d</string>
 	<string name="reader_hint_pause_to_change">Hint, To change currently read TTS text, pause the TTS first.</string>
 	<string name="view_novel_error_url_load">Failed to load novel URL: %s</string>
+	<string name="warning_repo">Warning no libraries found! Please wait a bit for them to be downloaded!</string>
 
 </resources>

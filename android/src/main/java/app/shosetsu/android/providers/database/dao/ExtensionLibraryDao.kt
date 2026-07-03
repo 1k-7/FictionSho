@@ -58,4 +58,8 @@ interface ExtensionLibraryDao : BaseDao<DBExtLibEntity> {
 
 	@Query("SELECT * FROM libs WHERE scriptName = :name ORDER BY repoID DESC")
 	suspend fun getExtLibsMatchingName(name: String): List<DBExtLibEntity>
+
+
+	@Query("SELECT * FROM libs")
+	suspend fun loadAll(): List<DBExtLibEntity>
 }
