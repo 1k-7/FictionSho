@@ -404,6 +404,7 @@ fun NovelViewExceptionConsumer(
 	// We launch the snack bars in its own coroutine scope, so we can keep consuming the action even if a new exception comes in
 	val scope = rememberCoroutineScope()
 	LaunchedEffect(exceptionSnackbarModel) {
+		val exceptionSnackbarModel = exceptionSnackbarModel
 		if (exceptionSnackbarModel != null) {
 			when (exceptionSnackbarModel.exception) {
 				is OfflineException -> {
