@@ -239,12 +239,19 @@ dependencies {
 
 	// Core libraries
 	implementation(libs.luaj.jse)
-	gradle.startParameter.taskNames.forEach { task ->
-		if (!task.contains("fdroid")) {
-			implementation(libs.shosetsuorg.klib)
-		} else {
-			// F-Droid does not like gitlab maven
-			implementation(libs.shosetsuorg.klib.jitpack)
+	val taskNames = gradle.startParameter.taskNames
+	if (taskNames.isEmpty()) {
+		// Default to my build
+		implementation(libs.shosetsuorg.klib)
+	} else {
+		taskNames.forEach { task ->
+			println("Processing task: $task")
+			if (!task.contains("fdroid")) {
+				implementation(libs.shosetsuorg.klib)
+			} else {
+				// F-Droid does not like gitlab maven
+				implementation(libs.shosetsuorg.klib.jitpack)
+			}
 		}
 	}
 	implementation(libs.jsoup)
