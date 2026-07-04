@@ -282,6 +282,11 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 
 	object ReaderNextChapter : BooleanKey("reader_next_chapter", false)
 
+	/**
+	 * If the TTS will alert the reader it is moving to the next chapter
+	 */
+	object ReaderNextChapterAlert : BooleanKey("reader_next_chapter_alert", true)
+
 
 	// Advanced settings
 

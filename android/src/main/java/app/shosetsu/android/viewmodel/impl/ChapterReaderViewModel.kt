@@ -115,6 +115,7 @@ import org.acra.ACRA
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.Locale
+import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
 /*
@@ -1215,6 +1216,8 @@ class ChapterReaderViewModel(
 		}
 	}
 
+	private val alertNextChapter = settingsRepo.getBooleanFlow(SettingKey.ReaderNextChapterAlert)
+
 	private suspend fun onLatestTTSNextChapterSetting(ttsNextChapter: Boolean, lastTts: TTSText, chapterId: Int) {
 		logV("Arguments: ttsNextChapter='$ttsNextChapter'")
 		// skip if disabled
@@ -1267,12 +1270,32 @@ class ChapterReaderViewModel(
 
 			logV("nextChapter='$nextChapter'")
 
+			// Check if we have to alert the user before moving on
+			if (alertNextChapter.value) {
+				// Inform the reader we are moving forward
+
+				// generate an ID
+				val id = UUID.randomUUID()
+
+				// Send the information out
+				tts.value?.speak(
+					application.getString(R.string.reader_tts_next_chapter),
+					TextToSpeech.QUEUE_FLUSH,
+					null,
+					id.toString()
+				)
+
+				// await our voice to finish
+				ttsDone.firstOrNull { it != null && id.toString() == it }
+
+				// give the user a bit to process that
+				delay(2000)
+			}
+
 			// Jump to the next chapter
 			logD("Moving to next chapter")
 			pageJumper.emit(readerUIItems.indexOf(nextChapter))
 			viewModelScopeIO.launch {
-				// Wait a moment
-				delay(1000)
 				logD("Cleaning up memory")
 				System.gc() // Clear out heavy operation (above)
 				logD("Set the nextChapter as read")
