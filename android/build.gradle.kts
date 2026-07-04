@@ -22,7 +22,7 @@ android {
 		minSdk = 22
 		targetSdk = 36
 		versionCode = 49
-		versionName = "2.5.1"
+		versionName = "2.5.2"
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 		multiDexEnabled = true
 
