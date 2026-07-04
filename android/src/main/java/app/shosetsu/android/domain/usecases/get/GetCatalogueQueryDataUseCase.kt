@@ -45,6 +45,7 @@ class GetCatalogueQueryDataUseCase(
 	private val novelsRepository: INovelsRepository,
 ) {
 	inner class MyPagingSource(
+		val extensionId: Int,
 		val iExtension: IExtension,
 		val query: String,
 		val data: Map<Int, Any>,
@@ -77,7 +78,7 @@ class GetCatalogueQueryDataUseCase(
 							val data: List<Novel.Info> = it
 							(data.mapNotNull { novelListing ->
 								try {
-									novelsRepository.insertReturnStripped(novelListing.convertTo(iExtension))
+									novelsRepository.insertReturnStripped(novelListing.convertTo(extensionId))
 										?.let { ACatalogNovelUI(it, novelListing) }
 								} catch (e: SQLiteException) {
 									logE("Failed to load parse novel", e)
@@ -125,17 +126,18 @@ class GetCatalogueQueryDataUseCase(
 		MissingExtensionException::class
 	)
 	suspend operator fun invoke(
-		extID: Int,
+		extensionId: Int,
 		query: String,
 		filters: Map<Int, Any>
-	): MyPagingSource = getExt(extID)?.let {
-		invoke(it, query, filters)
-	} ?: throw MissingExtensionException(extID)
+	): MyPagingSource = getExt(extensionId)?.let {
+		invoke(extensionId, it, query, filters)
+	} ?: throw MissingExtensionException(extensionId)
 
 	@Throws(LuaError::class)
 	operator fun invoke(
+		extensionId: Int,
 		ext: IExtension,
 		query: String,
 		filters: Map<Int, Any>
-	): MyPagingSource = MyPagingSource(ext, query, filters)
+	): MyPagingSource = MyPagingSource(extensionId, ext, query, filters)
 }

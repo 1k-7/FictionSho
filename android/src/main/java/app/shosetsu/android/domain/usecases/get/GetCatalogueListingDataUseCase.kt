@@ -42,6 +42,7 @@ class GetCatalogueListingDataUseCase(
 	private val extSettingsRepo: IExtensionSettingsRepository
 ) {
 	inner class MyPagingSource(
+		val extensionId: Int,
 		val iExtension: IExtension,
 		val data: Map<Int, Any>
 	) : PagingSource<Int, ACatalogNovelUI>() {
@@ -65,6 +66,7 @@ class GetCatalogueListingDataUseCase(
 					// withContext(Dispatcher.IO) { ... } block since Retrofit's Coroutine
 					// CallAdapter dispatches on a worker thread.
 					val response = search(
+						extensionId,
 						iExtension,
 						HashMap(data).also { it[PAGE_INDEX] = pageNumber })
 
@@ -95,16 +97,18 @@ class GetCatalogueListingDataUseCase(
 
 	@Throws(SSLException::class, LuaError::class)
 	operator fun invoke(
+		extensionId: Int,
 		iExtension: IExtension,
 		data: Map<Int, Any>
-	) = MyPagingSource(iExtension, data)
+	) = MyPagingSource(extensionId, iExtension, data)
 
 	@Throws(SSLException::class, LuaError::class, InvalidListingIndex::class)
 	suspend fun search(
+		extensionId: Int,
 		iExtension: IExtension,
 		data: Map<Int, Any>
 	): List<ACatalogNovelUI> {
-		val selectedListing = extSettingsRepo.getSelectedListing(iExtension.formatterID)
+		val selectedListing = extSettingsRepo.getSelectedListing(extensionId)
 
 		// Load catalogue data
 		val list = novelsRepository.getCatalogueData(
@@ -118,7 +122,7 @@ class GetCatalogueListingDataUseCase(
 			// For each, insert and return a stripped card
 			// This operation is to pre-cache URL and ID so loading occurs smoothly
 			try {
-				novelsRepository.insertReturnStripped(novelListing.convertTo(iExtension))
+				novelsRepository.insertReturnStripped(novelListing.convertTo(extensionId))
 					?.let { ACatalogNovelUI(it, novelListing) }
 			} catch (e: SQLiteException) {
 				logE("Failed to load parse novel", e)

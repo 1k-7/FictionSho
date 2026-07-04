@@ -38,9 +38,9 @@ class MemExtensionDataSource(factory: ICache.Factory) : IMemExtensionsDataSource
 		return extensionsCache[extensionID]
 	}
 
-	override fun putExtensionInMemory(iExtension: IExtension) {
+	override fun putExtensionInMemory(id: Int, extension: IExtension) {
 		//	logV("Putting formatter ${iExtension.formatterID} into memory")
-		extensionsCache[iExtension.formatterID] = iExtension
+		extensionsCache[id] = extension
 	}
 
 	override fun removeExtensionFromMemory(extensionID: Int): Boolean {

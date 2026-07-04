@@ -64,8 +64,8 @@ class ExtensionEntitiesRepository(
 					extension.exMetaData.libVersion
 				)
 
-			setSettings(extension, extension.settingsModel.toList())
-			memorySource.putExtensionInMemory(extension)
+			setSettings(extensionEntity, extension, extension.settingsModel.toList())
+			memorySource.putExtensionInMemory(extensionEntity.id, extension)
 			extension
 		}
 	}
@@ -81,7 +81,7 @@ class ExtensionEntitiesRepository(
 		iExt: IExtension,
 		extensionContent: ByteArray
 	) = onIO {
-		memorySource.putExtensionInMemory(iExt)
+		memorySource.putExtensionInMemory(extensionEntity.id, iExt)
 
 		fileSource.writeExtension(extensionEntity, extensionContent)
 	}
@@ -114,57 +114,61 @@ class ExtensionEntitiesRepository(
 	): Float =
 		settingsSource.getFloat("$extensionID", SettingKey.CustomFloat("$settingID", default))
 
-	private suspend fun setSettings(extension: IExtension, filters: List<Filter<out Any?>>) {
+	private suspend fun setSettings(
+		extensionEntity: GenericExtensionEntity,
+		extension: IExtension,
+		filters: List<Filter<out Any?>>
+	) {
 		filters.forEach { filter ->
 			when (filter) {
 				is Filter.Text -> {
 					extension.updateSetting(
 						filter.id,
-						getString(extension.formatterID, filter.id, filter.state)
+						getString(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.Switch -> {
 					extension.updateSetting(
 						filter.id,
-						getBoolean(extension.formatterID, filter.id, filter.state)
+						getBoolean(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.Checkbox -> {
 					extension.updateSetting(
 						filter.id,
-						getBoolean(extension.formatterID, filter.id, filter.state)
+						getBoolean(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.TriState -> {
 					extension.updateSetting(
 						filter.id,
-						getInt(extension.formatterID, filter.id, filter.state)
+						getInt(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.Dropdown -> {
 					extension.updateSetting(
 						filter.id,
-						getInt(extension.formatterID, filter.id, filter.state)
+						getInt(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.RadioGroup -> {
 					extension.updateSetting(
 						filter.id,
-						getInt(extension.formatterID, filter.id, filter.state)
+						getInt(extensionEntity.id, filter.id, filter.state)
 					)
 				}
 
 				is Filter.FList -> {
-					setSettings(extension, filter.filters)
+					setSettings(extensionEntity, extension, filter.filters)
 				}
 
 				is Filter.Group<*> -> {
-					setSettings(extension, filter.filters)
+					setSettings(extensionEntity, extension, filter.filters)
 				}
 
 				else -> {

@@ -151,12 +151,14 @@ class CatalogViewModel(
 	}
 
 	private val pagerFlow: Flow<Pager<Int, ACatalogNovelUI>?> by lazy {
-		iExtensionFlow.transformLatest { ext ->
+		extensionIDFlow.combine(iExtensionFlow) { a, b ->
+			a to b
+		}.transformLatest { (extId, ext) ->
 			if (ext == null) {
 				emit(null)
 			} else {
 				emitAll(
-					getExtSelectedListingFlow(ext.formatterID).flatMapLatest {
+					getExtSelectedListingFlow(extId).flatMapLatest {
 						// When the listing is reselected, we clear out the existing filter
 						filterDataState.clear()
 						_applyFilter()
@@ -166,8 +168,9 @@ class CatalogViewModel(
 									PagingConfig(10)
 								) {
 									if (query.isEmpty())
-										getCatalogueListingData(ext, data)
+										getCatalogueListingData(extId, ext, data)
 									else loadCatalogueQueryDataUseCase(
+										extId,
 										ext,
 										query,
 										data
@@ -192,10 +195,12 @@ class CatalogViewModel(
 	}
 
 	override val filterItemsLive: StateFlow<ImmutableList<StableHolder<Filter<*>>>> by lazy {
-		iExtensionFlow.transformLatest { extension ->
+		extensionIDFlow.combine(iExtensionFlow) { a, b ->
+			a to b
+		}.transformLatest { (extensionEntity, extension) ->
 			// Once we get the extension, we want to reload the filters whenever the selected listing changes
 			if (extension != null) {
-				getExtSelectedListingFlow(extension.formatterID).collect {
+				getExtSelectedListingFlow(extensionEntity).collect {
 					emit(extension)
 				}
 			} else {

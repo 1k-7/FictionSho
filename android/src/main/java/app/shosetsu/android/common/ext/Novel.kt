@@ -2,7 +2,6 @@ package app.shosetsu.android.common.ext
 
 import app.shosetsu.android.domain.model.local.ChapterEntity
 import app.shosetsu.android.domain.model.local.NovelEntity
-import app.shosetsu.lib.IExtension
 import app.shosetsu.lib.Novel
 
 /*
@@ -53,11 +52,11 @@ fun Novel.Chapter.entity(
 		order = this.order
 	)
 
-fun Novel.Info.convertTo(extension: IExtension): NovelEntity = NovelEntity(
+fun Novel.Info.convertTo(extensionId: Int): NovelEntity = NovelEntity(
 	url = this.link,
 	imageURL = this.imageURL,
 	title = this.title,
-	extensionID = extension.formatterID,
+	extensionID = extensionId,
 )
 
 fun Novel.Info.asEntity(
