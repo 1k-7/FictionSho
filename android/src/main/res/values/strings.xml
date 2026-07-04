@@ -787,5 +787,6 @@
 	<string name="reader_tts_next_chapter">Alert! Moving to the next chapter in a moment.</string>
 	<string name="settings_reader_next_chapter_alert_title">TTS Alert before moving chapters</string>
 	<string name="settings_reader_next_chapter_alert_desc">If enabled, a text to speech audio will give you an alert about moving to the next chapter.</string>
+	<string name="settings_backup_location_desc">Click to set a backup location</string>
 
 </resources>
