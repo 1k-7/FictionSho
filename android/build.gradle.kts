@@ -239,7 +239,11 @@ dependencies {
 
 	// Core libraries
 	implementation(libs.luaj.jse)
-	implementation(libs.shosetsuorg.klib)
+	// F-Droid does not like gitlab maven
+	"fdroidImplementation"(libs.shosetsuorg.klib.jitpack)
+	"releaseImplementation"(libs.shosetsuorg.klib)
+	"uptodownImplementation"(libs.shosetsuorg.klib)
+	"playstoreImplementation"(libs.shosetsuorg.klib)
 	implementation(libs.jsoup)
 
 	// Image loading
