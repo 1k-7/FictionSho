@@ -239,11 +239,14 @@ dependencies {
 
 	// Core libraries
 	implementation(libs.luaj.jse)
-	// F-Droid does not like gitlab maven
-	"fdroidImplementation"(libs.shosetsuorg.klib.jitpack)
-	"releaseImplementation"(libs.shosetsuorg.klib)
-	"uptodownImplementation"(libs.shosetsuorg.klib)
-	"playstoreImplementation"(libs.shosetsuorg.klib)
+	gradle.startParameter.taskNames.forEach { task ->
+		if (!task.contains("fdroid")) {
+			implementation(libs.shosetsuorg.klib)
+		} else {
+			// F-Droid does not like gitlab maven
+			implementation(libs.shosetsuorg.klib.jitpack)
+		}
+	}
 	implementation(libs.jsoup)
 
 	// Image loading
