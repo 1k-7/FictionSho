@@ -251,6 +251,11 @@ sealed class SettingKey<T : Any>(val name: String, val default: T) {
 	object BackupOnLowBattery : BooleanKey("backupLowBattery", true)
 	object BackupOnlyWhenIdle : BooleanKey("backupIdle", false)
 
+	/**
+	 * if the user is to be shown an indicator that a backup is occurring
+	 */
+	object BackupIndicator : BooleanKey("backup_show_indicator", true)
+
 	object ExposeTrueChapterDelete : BooleanKey("expose_true_chapter_delete", false)
 
 	object LogToFile : BooleanKey("log_to_file", false)

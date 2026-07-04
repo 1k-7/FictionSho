@@ -788,5 +788,7 @@
 	<string name="settings_reader_next_chapter_alert_title">TTS Alert before moving chapters</string>
 	<string name="settings_reader_next_chapter_alert_desc">If enabled, a text to speech audio will give you an alert about moving to the next chapter.</string>
 	<string name="settings_backup_location_desc">Click to set a backup location</string>
+	<string name="settings_backup_indicator_title">Backup Indicator</string>
+	<string name="settings_backup_indicator_desc">If enabled a red banner indicator will be show to the user that a backup is in progress.\\nIf disabled the user will not see the indicator.</string>
 
 </resources>

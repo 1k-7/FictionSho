@@ -102,7 +102,8 @@ val viewModelsModule: DI.Module = DI.Module("view_models_module") {
 		HomeViewModel(
 			loadNavigationStyleUseCase = instance(),
 			loadRequireDoubleBackUseCase = instance(),
-			backupRepo = instance()
+			backupRepo = instance(),
+			settings = instance()
 		)
 	}
 

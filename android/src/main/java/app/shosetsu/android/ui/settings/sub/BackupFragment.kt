@@ -341,6 +341,17 @@ fun BackupSettingsContent(
 			}
 
 			item {
+				SwitchSettingContent(
+					stringResource(R.string.settings_backup_indicator_title),
+					stringResource(R.string.settings_backup_indicator_desc),
+					viewModel.settingsRepo,
+					SettingKey.BackupIndicator,
+					modifier = Modifier
+						.fillMaxWidth()
+				)
+			}
+
+			item {
 				TextPreferenceWidget(
 					title = stringResource(R.string.settings_backup_start_migration_title),
 					subtitle = stringResource(R.string.settings_backup_start_migration_desc),
