@@ -1,9 +1,8 @@
-package app.shosetsu.android.view.uimodels.model
+package app.shosetsu.android.common.ext
 
-import android.text.format.DateFormat
-import androidx.compose.runtime.Immutable
-import app.shosetsu.android.common.enums.ReadingStatus
-import java.util.Date
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.ComposeView
+import androidx.fragment.app.Fragment
 
 /*
  * This file is part of shosetsu.
@@ -20,18 +19,15 @@ import java.util.Date
  *
  * You should have received a copy of the GNU General Public License
  * along with shosetsu.  If not, see <https://www.gnu.org/licenses/>.
- * ====================================================================
  */
 
-@Immutable
-data class UpdatesUI(
-	val chapterID: Int,
-	val novelID: Int,
-	val time: Long,
-	val chapterName: String,
-	val readingStatus: ReadingStatus,
-	val novelName: String,
-	val novelImageURL: String,
-) {
-	val displayTime = DateFormat.format("hh:mm", Date(time)).toString()
-}
+/**
+ * Shosetsu
+ *
+ * @since 16 / 06 / 2023
+ * @author Doomsdayrs
+ */
+fun Fragment.ComposeView(content: @Composable () -> Unit): ComposeView =
+	ComposeView(requireContext()).apply {
+		setContent(content)
+	}
