@@ -76,7 +76,13 @@ import app.shosetsu.android.domain.repository.base.INovelSettingsRepository
 import app.shosetsu.android.domain.repository.base.INovelsRepository
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.encodeToStream
 import org.acra.ACRA
@@ -169,30 +175,32 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 
 	@Suppress("Destructure")
 	@Throws(SQLiteException::class)
-	private suspend fun getBackupChapters(novelID: Int): List<BackupChapterEntity> {
-		if (backupChapters())
-			chaptersRepository.getChapters(novelID).let { list ->
-				return list.map { chapterEntity ->
-					val chapterHistory = try {
-						chapterHistoryRepository.get(chapterEntity.id!!)
-					} catch (e: SQLiteException) {
-						null
-					}
-
-					BackupChapterEntity(
-						url = chapterEntity.url,
-						name = chapterEntity.title,
-						bookmarked = chapterEntity.bookmarked,
-						rS = chapterEntity.readingStatus,
-						rP = chapterEntity.readingPosition,
-						startedReadingAt = chapterHistory?.startedReadingAt,
-						endedReadingAt = chapterHistory?.endedReadingAt,
-						releaseDate = chapterEntity.releaseDate,
-						order = chapterEntity.order
-					)
+	private suspend fun getBackupChapters(novelID: Int): Flow<BackupChapterEntity> {
+		// Check if we can back up the chapters
+		if (backupChapters()) {
+			// Get the thousands of chapters into a flow
+			return chaptersRepository.getChapters(novelID).asFlow().map { chapterEntity ->
+				val chapterHistory = try {
+					chapterHistoryRepository.get(chapterEntity.id!!)
+				} catch (e: SQLiteException) {
+					null
 				}
+
+				BackupChapterEntity(
+					url = chapterEntity.url,
+					name = chapterEntity.title,
+					bookmarked = chapterEntity.bookmarked,
+					rS = chapterEntity.readingStatus,
+					rP = chapterEntity.readingPosition,
+					startedReadingAt = chapterHistory?.startedReadingAt,
+					endedReadingAt = chapterHistory?.endedReadingAt,
+					releaseDate = chapterEntity.releaseDate,
+					order = chapterEntity.order
+				)
 			}
-		return emptyList()
+		}
+
+		return emptyFlow()
 	}
 
 	private suspend fun getBackupCategories(): Map<Int, BackupCategoryEntity> {
@@ -235,7 +243,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 		backupRepository.updateProgress(BackupProgress.IN_PROGRESS)
 		val backupSettings = backupSettings()
 
-		lateinit var novelsToChapters: Sequence<Pair<NovelEntity, List<BackupChapterEntity>>>
+		lateinit var novelsToChapters: Flow<Pair<NovelEntity, Flow<BackupChapterEntity>>>
 		lateinit var extensions: List<InstalledExtensionEntity>
 		lateinit var categories: Map<Int, BackupCategoryEntity>
 
@@ -257,23 +265,21 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 			logI("Retrieving and mapping chapters")
 			notify("Retrieving and mapping chapters")
 			// Novels to their chapters
-			novelsToChapters = novels.asSequence().map { it to runBlocking { getBackupChapters(it.id!!) } }
+			novelsToChapters = novels.asFlow().map { it to getBackupChapters(it.id!!) }
 
 			logI("Loading extensions required")
 			notify("Loading extensions required")
 			// Extensions each novel requires
 			// Distinct, with no duplicates
-			extensions = novels.asSequence().mapNotNull {
-				runBlocking {
-					try {
-						extensionsRepository.getInstalledExtension(it.extensionID)
-					} catch (e: SQLiteException) {
-						ACRA.errorReporter.handleSilentException(e)
-						e.printStackTrace()
-						null
-					}
+			extensions = novels.asFlow().mapNotNull {
+				try {
+					extensionsRepository.getInstalledExtension(it.extensionID)
+				} catch (e: SQLiteException) {
+					ACRA.errorReporter.handleSilentException(e)
+					e.printStackTrace()
+					null
 				}
-			}.distinct().toList()
+			}.toList().distinct()
 
 			// Categories each novel requires
 			categories = try {
@@ -310,7 +316,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 	@Throws(IOException::class)
 	private suspend fun writeBackup(
 		extensions: List<InstalledExtensionEntity>,
-		novelsToChapters: Sequence<Pair<NovelEntity, List<BackupChapterEntity>>>,
+		novelsToChapters: Flow<Pair<NovelEntity, Flow<BackupChapterEntity>>>,
 		backupSettings: Boolean,
 		categories: Map<Int, BackupCategoryEntity>
 	): Result? {
@@ -320,6 +326,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 		// Contains only the repos that are used
 		val repositoriesRequired =
 			extensionRepoRepository.loadRepositories()
+				// Filter to only get repositories that an extension uses
 				.filter { repositoryEntity ->
 					extensions.any { extensionEntity ->
 						extensionEntity.repoID == repositoryEntity.id
@@ -341,12 +348,12 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 						novelsToChapters.filter { (novel, _) ->
 							novel.extensionID == extensionEntity.id
 						}.map { (novel, chapters) ->
-							val settings =
+							val novelSettings =
 								if (backupSettings)
-									runBlocking { novelSettingsRepository.get(novel.id!!) }
+									novelSettingsRepository.get(novel.id!!)
 								else null
 
-							val bSettings = settings?.let {
+							val backupNovelSettings = novelSettings?.let {
 								BackupNovelSettingEntity(
 									it.sortType,
 									it.showOnlyReadingStatusOf,
@@ -358,13 +365,12 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 							} ?: BackupNovelSettingEntity()
 
 							val novelCategories =
-								runBlocking {
-									novelCategoriesRepository.getNovelCategoriesFromNovel(
-										novel.id!!
-									)
-								}
-									.map { categories[it.categoryID]!!.order }
+								novelCategoriesRepository.getNovelCategoriesFromNovel(
+									novel.id!!
+								).map { categories[it.categoryID]!!.order }
 
+							// The chapters to list function will be a memory hog
+							// Pass it off into the next mapping, so memory is collected
 							BackupNovelEntity(
 								url = novel.url,
 								bookmarked = novel.bookmarked,
@@ -378,10 +384,17 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 								artists = novel.artists,
 								tags = novel.tags,
 								status = novel.status,
-								chapters = chapters,
-								settings = bSettings,
+								settings = backupNovelSettings,
 								categories = novelCategories,
-								pinned = runBlocking { novelPinRepository.isPinned(novel.id!!) }
+								pinned = novelPinRepository.isPinned(novel.id!!)
+							) to chapters
+						}.map { (backupEntity, chapters) ->
+							// Make sure we have as much memory as possible
+							System.gc()
+
+							// Perform the massive collection / transformation
+							backupEntity.copy(
+								chapters = chapters.toList()
 							)
 						}.toList()
 					)
