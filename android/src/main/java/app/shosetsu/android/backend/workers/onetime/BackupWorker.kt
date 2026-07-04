@@ -76,6 +76,7 @@ import app.shosetsu.android.domain.repository.base.INovelSettingsRepository
 import app.shosetsu.android.domain.repository.base.INovelsRepository
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.encodeToStream
 import org.acra.ACRA
@@ -234,7 +235,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 		backupRepository.updateProgress(BackupProgress.IN_PROGRESS)
 		val backupSettings = backupSettings()
 
-		lateinit var novelsToChapters: List<Pair<NovelEntity, List<BackupChapterEntity>>>
+		lateinit var novelsToChapters: Sequence<Pair<NovelEntity, List<BackupChapterEntity>>>
 		lateinit var extensions: List<InstalledExtensionEntity>
 		lateinit var categories: Map<Int, BackupCategoryEntity>
 
@@ -242,7 +243,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 		Run to isolate the variable 'novels' so it can be trashed, hopefully saving memory
 		 */
 		val success = run {
-			val novels = try {
+			var novels = try {
 				novelRepository.loadBookmarkedNovelEntities()
 			} catch (e: SQLiteException) {
 				ACRA.errorReporter.handleSilentException(e)
@@ -256,21 +257,23 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 			logI("Retrieving and mapping chapters")
 			notify("Retrieving and mapping chapters")
 			// Novels to their chapters
-			novelsToChapters = novels.map { it to getBackupChapters(it.id!!) }
+			novelsToChapters = novels.asSequence().map { it to runBlocking { getBackupChapters(it.id!!) } }
 
 			logI("Loading extensions required")
 			notify("Loading extensions required")
 			// Extensions each novel requires
 			// Distinct, with no duplicates
-			extensions = novels.mapNotNull {
-				try {
-					extensionsRepository.getInstalledExtension(it.extensionID)
-				} catch (e: SQLiteException) {
-					ACRA.errorReporter.handleSilentException(e)
-					e.printStackTrace()
-					null
+			extensions = novels.asSequence().mapNotNull {
+				runBlocking {
+					try {
+						extensionsRepository.getInstalledExtension(it.extensionID)
+					} catch (e: SQLiteException) {
+						ACRA.errorReporter.handleSilentException(e)
+						e.printStackTrace()
+						null
+					}
 				}
-			}.distinct()
+			}.distinct().toList()
 
 			// Categories each novel requires
 			categories = try {
@@ -307,7 +310,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 	@Throws(IOException::class)
 	private suspend fun writeBackup(
 		extensions: List<InstalledExtensionEntity>,
-		novelsToChapters: List<Pair<NovelEntity, List<BackupChapterEntity>>>,
+		novelsToChapters: Sequence<Pair<NovelEntity, List<BackupChapterEntity>>>,
 		backupSettings: Boolean,
 		categories: Map<Int, BackupCategoryEntity>
 	): Result? {
@@ -340,7 +343,7 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 						}.map { (novel, chapters) ->
 							val settings =
 								if (backupSettings)
-									novelSettingsRepository.get(novel.id!!)
+									runBlocking { novelSettingsRepository.get(novel.id!!) }
 								else null
 
 							val bSettings = settings?.let {
@@ -355,9 +358,11 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 							} ?: BackupNovelSettingEntity()
 
 							val novelCategories =
-								novelCategoriesRepository.getNovelCategoriesFromNovel(
-									novel.id!!
-								)
+								runBlocking {
+									novelCategoriesRepository.getNovelCategoriesFromNovel(
+										novel.id!!
+									)
+								}
 									.map { categories[it.categoryID]!!.order }
 
 							BackupNovelEntity(
@@ -376,9 +381,9 @@ class BackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
 								chapters = chapters,
 								settings = bSettings,
 								categories = novelCategories,
-								pinned = novelPinRepository.isPinned(novel.id!!)
+								pinned = runBlocking { novelPinRepository.isPinned(novel.id!!) }
 							)
-						}
+						}.toList()
 					)
 				},
 				categories = categories.values.toList()
