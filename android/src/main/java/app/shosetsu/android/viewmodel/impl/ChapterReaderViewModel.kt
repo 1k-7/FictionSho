@@ -85,6 +85,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1163,7 +1164,18 @@ class ChapterReaderViewModel(
 
 					logD("Launching next chapter watcher")
 					launch nextChapterTts@{
-						nextChapterTSSProcess(passage, chapterId)
+						var count = 0
+						while (count < 10) {
+							count++
+							nextChapterTSSProcess(passage, chapterId)
+							logD("nextChapterTSSProcess returned early, retrying in a second, $count")
+							delay(1000)
+						}
+
+						// We must never reach here
+						exceptions.emit(
+							ExceptionSnackbarModel("Failed to setup next chapter TTS process after 10 tries.")
+						)
 					}
 
 					logD("Starting TTS collector")
@@ -1180,8 +1192,15 @@ class ChapterReaderViewModel(
 	 */
 	private suspend fun nextChapterTSSProcess(passage: ChapterPassage.Success, chapterId: Int) {
 		logD("Next Chapter TTS job has started, waiting for lastTTS")
-		val lastTts =
-			passage.ttsElements.lastOrNull()
+		val lastTts = run {
+			// clone so we do not interrupt parent
+			val elements = passage.ttsElements.clone()
+			// Recreate the model of our clone
+			elements.recreate()
+
+			// Return a temporary reference to this clone
+			elements
+		}.lastOrNull()
 
 		if (lastTts == null) {
 			logD("Last TTS is null, giving up")
@@ -1252,6 +1271,8 @@ class ChapterReaderViewModel(
 			logD("Moving to next chapter")
 			pageJumper.emit(readerUIItems.indexOf(nextChapter))
 			viewModelScopeIO.launch {
+				// Wait a moment
+				delay(1000)
 				logD("Cleaning up memory")
 				System.gc() // Clear out heavy operation (above)
 				logD("Set the nextChapter as read")
