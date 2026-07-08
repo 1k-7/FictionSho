@@ -108,15 +108,15 @@ class CatalogViewModel(
 
 	override val exceptionFlow = MutableSharedFlow<Throwable>()
 
-	private val iExtensionFlow: StateFlow<IExtension?> by lazy {
+	private val iExtensionFlow: StateFlow<Pair<Int, IExtension?>> by lazy {
 		extensionIDFlow.mapLatest { extensionID ->
 			val ext = getExtensionUseCase(extensionID)
 
 			// Ensure filter is initialized
 			ext?.searchFiltersModel?.toList()?.init()
 			applyFilter()
-			ext
-		}.stateIn(viewModelScopeIO, SharingStarted.Lazily, null)
+			extensionID to ext
+		}.stateIn(viewModelScopeIO, SharingStarted.Lazily, extensionIDFlow.value to null)
 	}
 
 	/**
@@ -151,9 +151,7 @@ class CatalogViewModel(
 	}
 
 	private val pagerFlow: Flow<Pager<Int, ACatalogNovelUI>?> by lazy {
-		extensionIDFlow.combine(iExtensionFlow) { a, b ->
-			a to b
-		}.transformLatest { (extId, ext) ->
+		iExtensionFlow.transformLatest { (extId, ext) ->
 			if (ext == null) {
 				emit(null)
 			} else {
@@ -195,9 +193,7 @@ class CatalogViewModel(
 	}
 
 	override val filterItemsLive: StateFlow<ImmutableList<StableHolder<Filter<*>>>> by lazy {
-		extensionIDFlow.combine(iExtensionFlow) { a, b ->
-			a to b
-		}.transformLatest { (extensionEntity, extension) ->
+		iExtensionFlow.transformLatest { (extensionEntity, extension) ->
 			// Once we get the extension, we want to reload the filters whenever the selected listing changes
 			if (extension != null) {
 				getExtSelectedListingFlow(extensionEntity).collect {
@@ -218,7 +214,7 @@ class CatalogViewModel(
 	}
 
 	override val hasFilters: StateFlow<Boolean> by lazy {
-		iExtensionFlow.mapLatest { it?.searchFiltersModel?.isNotEmpty() ?: false }
+		iExtensionFlow.mapLatest { it.second?.searchFiltersModel?.isNotEmpty() ?: false }
 			.catch {
 				exceptionFlow.emit(it)
 			}.onIO()
@@ -226,7 +222,7 @@ class CatalogViewModel(
 	}
 
 	override val hasSearchLive: StateFlow<Boolean> by lazy {
-		iExtensionFlow.mapLatest { it?.hasSearch ?: false }
+		iExtensionFlow.mapLatest { it.second?.hasSearch ?: false }
 			.catch {
 				exceptionFlow.emit(it)
 			}.onIO()
@@ -234,7 +230,7 @@ class CatalogViewModel(
 	}
 
 	override val extensionName: StateFlow<String> by lazy {
-		iExtensionFlow.mapLatest { it?.name ?: "" }
+		iExtensionFlow.mapLatest { it.second?.name ?: "" }
 			.catch {
 				exceptionFlow.emit(it)
 			}.onIO()
@@ -265,7 +261,7 @@ class CatalogViewModel(
 	}
 
 	override val baseURL: StateFlow<String?> =
-		iExtensionFlow.map { it?.baseURL }.catch {
+		iExtensionFlow.map { it.second?.baseURL }.catch {
 			exceptionFlow.emit(it)
 		}
 			.stateIn(viewModelScopeIO, SharingStarted.Lazily, null)
