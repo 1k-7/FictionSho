@@ -23,7 +23,6 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +45,7 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +58,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
@@ -125,6 +126,7 @@ fun BrowseView(
 	val isOnline by viewModel.isOnline.collectAsState(false)
 	val error by viewModel.error.collectAsState(null)
 	val isFilterMenuVisible by viewModel.isFilterMenuVisible.collectAsState()
+	val showUninstallConfirm by viewModel.showUninstallConfirm.collectAsState()
 
 	val hostState = remember { SnackbarHostState() }
 	val context = LocalContext.current
@@ -198,13 +200,40 @@ fun BrowseView(
 		onOpenSearch = openSearch,
 		query = query,
 		onSetQuery = viewModel::setSearch,
-		drawerIcon = drawerIcon
+		drawerIcon = drawerIcon,
+		uninstall = viewModel::uninstall
 	)
 
 	if (isFilterMenuVisible) {
 		BottomSheetDialog(viewModel::hideFilterMenu) {
 			BrowseControllerFilterMenu(viewModel)
 		}
+	}
+
+	if (showUninstallConfirm) {
+		AlertDialog(
+			onDismissRequest = viewModel::dismissUninstall,
+			confirmButton = {
+				TextButton(
+					onClick = viewModel::confirmUninstall
+				) {
+					Text(stringResource(R.string.uninstall))
+				}
+			},
+			dismissButton = {
+				TextButton(
+					onClick = viewModel::dismissUninstall
+				) {
+					Text(stringResource(android.R.string.cancel))
+				}
+			},
+			title = {
+				Text(stringResource(R.string.view_browse_confirm_uninstall_title))
+			},
+			text = {
+				Text(stringResource(R.string.view_browse_confirm_uninstall_desc))
+			}
+		)
 	}
 }
 
@@ -231,17 +260,18 @@ fun PreviewBrowseContent() {
 					isObsolete = false
 				)
 			}.toImmutableList(),
-		{},
-		{},
-		{ _, _ -> },
-		{},
-		{},
-		{},
-		{},
+		refresh = {},
+		openRepositories = {},
+		installExtension = { _, _ -> },
+		uninstall = {},
+		update = {},
+		openCatalogue = {},
+		openSettings = {},
+		cancelInstall = {},
 		hostState = remember { SnackbarHostState() },
 		onOpenFilter = {},
 		onOpenSearch = {},
-		drawerIcon = {}
+		drawerIcon = {},
 	)
 }
 
@@ -254,6 +284,7 @@ fun BrowseContent(
 	refresh: () -> Unit,
 	openRepositories: () -> Unit,
 	installExtension: (BrowseExtensionUI, ExtensionInstallOptionEntity) -> Unit,
+	uninstall: (BrowseExtensionUI) -> Unit,
 	update: (BrowseExtensionUI) -> Unit,
 	openCatalogue: (BrowseExtensionUI) -> Unit,
 	openSettings: (BrowseExtensionUI) -> Unit,
@@ -332,6 +363,9 @@ fun BrowseContent(
 							},
 							cancelInstall = {
 								cancelInstall(entity)
+							},
+							uninstall = {
+								uninstall(entity)
 							}
 						)
 					}
@@ -379,11 +413,12 @@ fun PreviewBrowseExtensionContent() {
 			isInstalling = false,
 			isObsolete = false
 		),
-		{},
-		{},
-		{},
-		{},
-		{}
+		cancelInstall = {},
+		uninstall = {},
+		install = {},
+		openSettings = {},
+		openCatalogue = {},
+		update = {}
 	)
 }
 
@@ -393,13 +428,25 @@ fun BrowseExtensionContent(
 	item: BrowseExtensionUI,
 	install: (ExtensionInstallOptionEntity) -> Unit,
 	update: () -> Unit,
+	uninstall: () -> Unit,
 	openCatalogue: () -> Unit,
 	openSettings: () -> Unit,
 	cancelInstall: () -> Unit
 ) {
 	Column(
 		Modifier
-			.clickable(onClick = openCatalogue)
+			.combinedClickable(
+				onClick = openCatalogue,
+				onClickLabel = if (item.isInstalled) {
+					stringResource(R.string.view_browse_label_open_catalogue)
+				} else {
+					stringResource(R.string.view_browse_label_cant_open_catalogue)
+				},
+				// Only show long click if installed
+				onLongClick = if (item.isInstalled) uninstall else null,
+				// Only show long click if installed
+				onLongClickLabel = if (item.isInstalled) stringResource(R.string.uninstall) else null
+			)
 			.padding(horizontal = 8.dp)
 	) {
 		Row(
@@ -534,7 +581,7 @@ fun BrowseExtensionContent(
 				if (item.isInstalling) {
 					SimpleIconButton(
 						stringResource(R.string.installing),
-						onClick = {},
+						onClick = cancelInstall,
 						modifier = Modifier.combinedClickable(
 							onClick = {},
 							onLongClick = cancelInstall,

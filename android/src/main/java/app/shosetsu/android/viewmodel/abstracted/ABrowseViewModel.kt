@@ -54,6 +54,11 @@ abstract class ABrowseViewModel :
 
 	abstract val error: Flow<Throwable>
 
+	/**
+	 * If to show a confirm dialog
+	 */
+	abstract val showUninstallConfirm: StateFlow<Boolean>
+
 	/** Refreshes the repositories and data values */
 	abstract fun refresh()
 
@@ -68,6 +73,11 @@ abstract class ABrowseViewModel :
 
 	/** Cancel an extension install */
 	abstract fun cancelInstall(ext: BrowseExtensionUI)
+
+	/**
+	 * Ask to uninstall a given extension
+	 */
+	abstract fun uninstall(ext: BrowseExtensionUI)
 
 
 	/**
@@ -109,4 +119,16 @@ abstract class ABrowseViewModel :
 	abstract fun showFilterMenu()
 
 	abstract fun hideFilterMenu()
+
+	/**
+	 * Dismiss the uninstallation request
+	 */
+	abstract fun dismissUninstall()
+
+	/**
+	 * Confirm the uninstallation request.
+	 *
+	 * Performs the removal immediately on the UI thread.
+	 */
+	abstract fun confirmUninstall()
 }

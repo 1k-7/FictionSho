@@ -32,6 +32,7 @@ import app.shosetsu.android.domain.usecases.CancelExtensionInstallUseCase
 import app.shosetsu.android.domain.usecases.IsOnlineUseCase
 import app.shosetsu.android.domain.usecases.RequestInstallExtensionUseCase
 import app.shosetsu.android.domain.usecases.StartRepositoryUpdateManagerUseCase
+import app.shosetsu.android.domain.usecases.UninstallExtensionUseCase
 import app.shosetsu.android.domain.usecases.load.LoadBrowseExtensionsUseCase
 import app.shosetsu.android.view.uimodels.model.BrowseExtensionUI
 import app.shosetsu.android.viewmodel.abstracted.ABrowseViewModel
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.runBlocking
 
 /**
  * shosetsu
@@ -63,6 +65,7 @@ class ExtensionsViewModel(
 	private val startRepositoryUpdateManager: StartRepositoryUpdateManagerUseCase,
 	private val installExtensionUI: RequestInstallExtensionUseCase,
 	private val cancelExtensionInstall: CancelExtensionInstallUseCase,
+	private val uninstallExtension: UninstallExtensionUseCase,
 	private val isOnlineUseCase: IsOnlineUseCase,
 	override val settingsRepo: ISettingsRepository,
 ) : ABrowseViewModel(), ExposedSettingsRepoViewModel {
@@ -71,6 +74,12 @@ class ExtensionsViewModel(
 		isOnlineUseCase.getFlow().stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
 	override val error = MutableSharedFlow<Throwable>()
+
+	private val extensionToUninstall = MutableStateFlow<BrowseExtensionUI?>(null)
+
+	override val showUninstallConfirm: StateFlow<Boolean> =
+		extensionToUninstall.map { it != null }
+			.stateIn(viewModelScopeIO, SharingStarted.Lazily, false)
 
 	override fun refresh() {
 		startRepositoryUpdateManager()
@@ -103,6 +112,10 @@ class ExtensionsViewModel(
 		launchIO {
 			cancelExtensionInstall(ext)
 		}
+	}
+
+	override fun uninstall(ext: BrowseExtensionUI) {
+		extensionToUninstall.value = ext
 	}
 
 	private val extensionFlow by lazy {
@@ -191,6 +204,22 @@ class ExtensionsViewModel(
 
 	override fun hideFilterMenu() {
 		isFilterMenuVisible.value = false
+	}
+
+	override fun dismissUninstall() {
+		extensionToUninstall.value = null
+	}
+
+	override fun confirmUninstall() {
+		val ext = extensionToUninstall.value ?: return
+
+		dismissUninstall()
+
+		logI("Performing force uninstall!")
+
+		runBlocking {
+			uninstallExtension(ext)
+		}
 	}
 
 	override val searchTermLive: MutableStateFlow<String> by lazy {
