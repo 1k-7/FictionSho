@@ -62,6 +62,38 @@ class ExtensionsRepository(
 				installedDBSource.loadExtensionLive(extId).map { installedExt ->
 					val firstExt = matchingExtensions.first()
 
+					// Variables to calculate, with their defaults
+					var isUpdateAvailable = false
+					var isObsolete = false
+
+					// Is this extension installed?
+					if (installedExt != null) {
+						// Extension is installed
+
+						// Try to get the repo version
+						val repoVersion =
+							matchingExtensions.find { it.repoID == installedExt.repoID }?.version
+
+						// Check if the repo version is found or not
+						if (repoVersion != null) {
+							// We have an upstream version
+							if (installedExt.version < repoVersion) {
+								// Repo version is newer! Update!
+								isUpdateAvailable = true
+							} else {
+								// Repo version is not newer...
+								// Is it marked obsolete?
+								if (repoVersion == Version(-9, -9, -9)) {
+									// We are now obsolete!
+									isObsolete = true
+								}
+							}
+						} else {
+							// The repo version is gone... obsolete likely
+							isObsolete = true
+						}
+					}
+
 					BrowseExtensionEntity(
 						id = extId,
 						name = installedExt?.name ?: firstExt.name,
@@ -83,16 +115,10 @@ class ExtensionsRepository(
 						isInstalled = installedExt != null,
 						installedVersion = installedExt?.version,
 						installedRepo = installedExt?.repoID ?: -1,
-						isUpdateAvailable = if (installedExt != null) {
-							val repoVersion =
-								matchingExtensions.find { it.repoID == installedExt.repoID }?.version
-
-							if (repoVersion != null) {
-								installedExt.version < repoVersion || repoVersion == Version(-9, -9, -9)
-							} else false
-						} else false,
+						isUpdateAvailable = isUpdateAvailable,
 						updateVersion = matchingExtensions.find { it.repoID == installedExt?.repoID }?.version,
 						isInstalling = false, // We can ignore this, another layer will set it
+						isObsolete = isObsolete
 					)
 				}
 			}

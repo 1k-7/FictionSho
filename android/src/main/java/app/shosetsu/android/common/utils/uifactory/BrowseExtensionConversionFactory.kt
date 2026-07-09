@@ -41,6 +41,7 @@ class BrowseExtensionConversionFactory(data: BrowseExtensionEntity) :
 		isUpdateAvailable = isUpdateAvailable,
 		updateVersion = updateVersion,
 		isInstalling = isInstalling,
+		isObsolete = isObsolete
 	)
 }
 

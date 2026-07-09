@@ -227,7 +227,8 @@ fun PreviewBrowseContent() {
 					installedRepo = 1,
 					isUpdateAvailable = false,
 					updateVersion = Version(1, 2, 1),
-					isInstalling = false
+					isInstalling = false,
+					isObsolete = false
 				)
 			}.toImmutableList(),
 		{},
@@ -375,7 +376,8 @@ fun PreviewBrowseExtensionContent() {
 			installedRepo = 1,
 			isUpdateAvailable = true,
 			updateVersion = Version(1, 2, 1),
-			isInstalling = false
+			isInstalling = false,
+			isObsolete = false
 		),
 		{},
 		{},
@@ -544,21 +546,19 @@ fun BrowseExtensionContent(
 			}
 		}
 
-		if (item.isUpdateAvailable && item.updateVersion != null) {
-			if (item.updateVersion == Version(-9, -9, -9)) {
-				Box(
+		if (item.isObsolete) {
+			Box(
+				modifier = Modifier
+					.background(MaterialTheme.colorScheme.tertiary)
+					.fillMaxWidth()
+			) {
+				Text(
+					stringResource(R.string.obsolete_extension),
+					color = MaterialTheme.colorScheme.onPrimary,
 					modifier = Modifier
-						.background(MaterialTheme.colorScheme.tertiary)
-						.fillMaxWidth()
-				) {
-					Text(
-						stringResource(R.string.obsolete_extension),
-						color = MaterialTheme.colorScheme.onPrimary,
-						modifier = Modifier
-							.padding(8.dp)
-							.align(Alignment.Center)
-					)
-				}
+						.padding(8.dp)
+						.align(Alignment.Center)
+				)
 			}
 		}
 	}
