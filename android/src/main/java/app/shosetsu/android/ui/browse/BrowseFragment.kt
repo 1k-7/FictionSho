@@ -526,7 +526,7 @@ fun BrowseExtensionContent(
 					var isDropdownVisible by remember { mutableStateOf(false) }
 					SimpleIconButton(
 						Icons.Default.Download,
-						null,
+						stringResource(R.string.view_browse_label_install_extension, item.name),
 						onClick = {
 							// We can skip to dropdown if there is only 1 install option
 							if (item.installOptions.size != 1)
@@ -573,7 +573,7 @@ fun BrowseExtensionContent(
 				if (item.isInstalled) {
 					SimpleIconButton(
 						Icons.Outlined.Settings,
-						stringResource(R.string.settings),
+						stringResource(R.string.view_browse_label_open_settings, item.name),
 						onClick = openSettings
 					)
 				}
