@@ -9,6 +9,7 @@ import app.shosetsu.android.common.ext.logI
 import app.shosetsu.android.common.ext.logW
 import app.shosetsu.android.common.utils.CloudflareInterceptor
 import app.shosetsu.android.common.utils.CookieJarSync
+import app.shosetsu.android.common.utils.ProactiveWebViewInterceptor
 import app.shosetsu.android.common.utils.SiteProtector
 import app.shosetsu.android.domain.repository.base.ISettingsRepository
 import app.shosetsu.lib.ShosetsuSharedLib
@@ -57,6 +58,9 @@ fun createOkHttpClient(context: Context, iSettingsRepository: ISettingsRepositor
 
 	val builder = OkHttpClient.Builder()
 		.cookieJar(CookieJarSync)
+		.addInterceptor(
+			ProactiveWebViewInterceptor(context)
+		)
 		.addInterceptor { chain ->
 			return@addInterceptor slowRequest(chain, chain.request())
 		}

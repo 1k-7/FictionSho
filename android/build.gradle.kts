@@ -19,7 +19,7 @@ android {
 	compileSdk = 36
 	buildToolsVersion = "37.0.0"
 	defaultConfig {
-		applicationId = "app.shosetsu.android"
+		applicationId = "app.shosetsu.fictionzone"
 		minSdk = 22
 		targetSdk = 36
 		versionCode = 50
@@ -104,7 +104,7 @@ android {
 	productFlavors {
 		create("playstore") {
 			// play store will be in this
-			applicationId = "app.shosetsu.android"
+			applicationId = "app.shosetsu.fictionzone"
 			applicationIdSuffix = ".play"
 			versionNameSuffix = "-play"
 		}
