@@ -1,4 +1,4 @@
--- {"id":20240,"ver":"1.0.0","libVer":"1.0.0","author":"1k-7","repo":"","dep":[]}
+-- {"id":20240,"ver":"1.0.1","libVer":"1.0.0","author":"1k-7","repo":"","dep":[]}
 
 local id = 20240
 local name = "FictionZone"
@@ -183,7 +183,7 @@ end
 
 -- Novel URL  →  just the slug path
 -- Chapter URL  →  /novel_id/chapter_id
-function shrinkURL(url, type)
+local function shrinkURL(url, type)
 	if type == KEY_NOVEL_URL then
 		return url:gsub("https?://fictionzone%.net/novel/", "")
 	end
@@ -193,7 +193,7 @@ function shrinkURL(url, type)
 	return url
 end
 
-function expandURL(url, type)
+local function expandURL(url, type)
 	if type == KEY_NOVEL_URL then
 		if url:match("^https?://") then return url end
 		return baseURL .. "/novel/" .. url
@@ -208,7 +208,7 @@ end
 --  parseNovel  – novel detail + chapter list
 ---------------------------------------------------------------------
 
-function parseNovel(novelURL)
+local function parseNovel(novelURL)
 	local fullURL = expandURL(novelURL, KEY_NOVEL_URL)
 	local doc = GETDocument(fullURL)
 	local html = doc:html()
@@ -339,7 +339,7 @@ end
 --  getPassage  – chapter content
 ---------------------------------------------------------------------
 
-function getPassage(chapterURL)
+local function getPassage(chapterURL)
 	-- chapterURL format: novel_id/chapter_id
 	local novel_id, chapter_id = chapterURL:match("^(%d+)/(%d+)$")
 	if not novel_id or not chapter_id then
@@ -488,7 +488,7 @@ local listings = {
 --  Search
 ---------------------------------------------------------------------
 
-function search(data)
+local function search(data)
 	local page = data[PAGE] or 1
 	local query = data[QUERY] or ""
 
