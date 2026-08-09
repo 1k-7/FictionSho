@@ -3,7 +3,7 @@
   "scripts": [
     {
       "name": "FictionZone",
-      "fileName": "FictionZone",
+      "fileName": "fictionzone",
       "imageURL": "https://raw.githubusercontent.com/1k-7/FictionSho/main/icons/FictionZone.png",
       "id": 20240,
       "lang": "en",
