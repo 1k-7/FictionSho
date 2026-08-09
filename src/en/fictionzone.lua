@@ -1,6 +1,6 @@
--- {"id":-1,"ver":"1.0.0","libVer":"1.0.0","author":"","repo":"","dep":[]}
+-- {"id":20240,"ver":"1.0.0","libVer":"1.0.0","author":"1k-7","repo":"","dep":[]}
 
-local id = -1
+local id = 20240
 local name = "FictionZone"
 local baseURL = "https://fictionzone.net"
 local imageURL = "https://fictionzone.net/favicon.ico"
