@@ -16,8 +16,10 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 
@@ -26,9 +28,39 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 	@Volatile private var bootstrapped = false
 	private val cfHosts = setOf("fictionzone.net", "www.fictionzone.net")
 
-	private class PageResult {
+	// For fetch()-based POST requests
+	private val results = ConcurrentHashMap<Long, PostResult>()
+	private val latches = ConcurrentHashMap<Long, CountDownLatch>()
+	private val nextId = AtomicLong(0)
+
+	private class PostResult {
+		var code = 0
+		var body = ""
+		var headers = mutableMapOf<String, String>()
+		var error: String? = null
+	}
+
+	private class GetResult {
 		var html: String? = null
 		var error: String? = null
+	}
+
+	inner class Bridge {
+		@JavascriptInterface
+		fun onResult(id: Long, code: Int, body: String, hdrJson: String) {
+			val r = PostResult().apply { this.code = code; this.body = body }
+			try {
+				val j = org.json.JSONObject(hdrJson)
+				j.keys().forEach { k -> r.headers[k] = j.getString(k) }
+			} catch (_: Exception) {}
+			results[id] = r
+			latches[id]?.countDown()
+		}
+		@JavascriptInterface
+		fun onError(id: Long, msg: String) {
+			results[id] = PostResult().apply { error = msg }
+			latches[id]?.countDown()
+		}
 	}
 
 	@SuppressLint("SetJavaScriptEnabled")
@@ -42,36 +74,30 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 					setDefaultSettings()
 					settings.javaScriptEnabled = true
 					settings.domStorageEnabled = true
+					addJavascriptInterface(Bridge(), "__ss")
 				}
 				wv.webViewClient = object : WebViewClientCompat() {
-					private var cfSolved = false
+					@Volatile var solved = false
 					override fun onPageFinished(view: WebView, url: String) {
-						if (cfSolved) return
-						val cookies = CookieManager.getInstance().getCookie(url)
-						if (cookies != null && cookies.contains("cf_clearance")) {
-							cfSolved = true
-							bootstrapped = true
-							latch.countDown()
-						} else {
-							// Keep waiting - CF challenge not solved yet
+						if (solved) return
+						val c = CookieManager.getInstance().getCookie(url)
+						if (c != null && c.contains("cf_clearance")) {
+							solved = true; bootstrapped = true; latch.countDown()
 						}
 					}
-					override fun onReceivedErrorCompat(v: WebView, c: Int, d: String?, u: String, m: Boolean) {
-						// CF challenge pages return 403/503 errors - that's expected
-					}
+					override fun onReceivedErrorCompat(v: WebView, c: Int, d: String?, u: String, m: Boolean) {}
 				}
 				wv.loadUrl("https://fictionzone.net/")
 				webView = wv
 			}
-			val ok = latch.await(60, TimeUnit.SECONDS)
-			if (!ok || !bootstrapped) bootstrapped = true // Fallback
+			latch.await(60, TimeUnit.SECONDS)
+			bootstrapped = true
 		}
 	}
 
 	override fun intercept(chain: Interceptor.Chain): Response {
 		val req = chain.request()
-		val host = req.url.host
-		if (host !in cfHosts) return chain.proceed(req)
+		if (req.url.host !in cfHosts) return chain.proceed(req)
 
 		val path = req.url.encodedPath.lowercase()
 		if (path.let { it.endsWith(".jpg") || it.endsWith(".png") || it.endsWith(".webp") ||
@@ -82,75 +108,89 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 		ensureBootstrapped()
 		val wv = webView ?: return chain.proceed(req)
 
-		return loadAndExtract(wv, req)
+		return if (req.method == "GET") loadPageGet(wv, req) else fetchPost(wv, req)
 	}
 
-	private fun loadAndExtract(wv: WebView, req: Request): Response {
+	private fun loadPageGet(wv: WebView, req: Request): Response {
 		val latch = CountDownLatch(1)
-		val result = PageResult()
+		val result = GetResult()
 
 		executor.execute {
 			val url = req.url.toString()
-			val headers = mutableMapOf<String, String>()
+			val extras = mutableMapOf<String, String>()
 			for (i in 0 until req.headers.size) {
 				val n = req.headers.name(i).lowercase()
 				if (n == "host" || n == "content-length" || n == "connection" || n == "transfer-encoding") continue
-				headers[req.headers.name(i)] = req.headers.value(i)
+				extras[req.headers.name(i)] = req.headers.value(i)
 			}
 
 			wv.webViewClient = object : WebViewClientCompat() {
-				private var done = false
-				private var loads = 0
-
+				var done = false; var loads = 0
 				override fun onPageFinished(view: WebView, pageUrl: String) {
-					if (done) return
-					loads++
-					// After a few page loads (CF challenges), extract HTML
+					if (done) return; loads++
 					if (!pageUrl.contains("fictionzone.net")) return
 					view.evaluateJavascript(
 						"(function(){return '<html>'+document.documentElement.outerHTML+'</html>';})();"
-					) { html ->
-						if (!done && html != null && html != "null" && html.length > 200) {
+					) { h ->
+						if (!done && h != null && h != "null" && h.length > 200) {
 							done = true
-							result.html = html
-								.removeSurrounding("\"")
-								.replace("\\\"", "\"")
-								.replace("\\n", "\n")
-								.replace("\\t", "\t")
-								.replace("\\/", "/")
-								.replace("\\\\", "\\")
-								.replace("\\u003C", "<")
+							result.html = h.removeSurrounding("\"").replace("\\\"","\"").replace("\\n","\n")
+								.replace("\\t","\t").replace("\\/","/").replace("\\\\","\\").replace("\\u003C","<")
 							latch.countDown()
-						} else if (loads > 10 && !done) {
-							// Give up after too many page loads (CF loop)
-							done = true
-							result.error = "CF challenge loop"
-							latch.countDown()
-						}
+						} else if (loads > 12 && !done) { done = true; result.error = "CF loop"; latch.countDown() }
 					}
 				}
-
-				override fun onReceivedErrorCompat(v: WebView, code: Int, d: String?, u: String, m: Boolean) {
-					if (m && loads > 15) {
-						done = true
-						result.error = "CF failed after 15 loads"
-						latch.countDown()
-					}
+				override fun onReceivedErrorCompat(v: WebView, c: Int, d: String?, u: String, m: Boolean) {
+					if (m && loads > 18) { done = true; result.error = "CF fail"; latch.countDown() }
 				}
 			}
-			wv.loadUrl(url, headers)
+			wv.loadUrl(url, extras)
 		}
 
-		val ok = latch.await(45, TimeUnit.SECONDS)
-		if (!ok) throw IOException("WV: timeout loading ${req.url}")
-		val err = result.error
-		if (err != null) throw IOException("WV: $err")
-		val html = result.html
-		if (html == null) throw IOException("WV: empty response")
+		if (!latch.await(45, TimeUnit.SECONDS)) throw IOException("GET timeout ${req.url}")
+		if (result.error != null) throw IOException("GET: ${result.error}")
+		val h = result.html ?: throw IOException("GET: empty")
+		return Response.Builder().request(req).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+			.body(h.toResponseBody("text/html".toMediaTypeOrNull())).build()
+	}
 
-		return Response.Builder()
-			.request(req).protocol(Protocol.HTTP_1_1).code(200).message("OK")
-			.body(html.toResponseBody("text/html".toMediaTypeOrNull()))
-			.build()
+	private fun fetchPost(wv: WebView, req: Request): Response {
+		val id = nextId.incrementAndGet()
+		val latch = CountDownLatch(1)
+		latches[id] = latch
+
+		val method = req.method
+		val safeUrl = req.url.toString().replace("\\","\\\\").replace("'","\\'")
+		val bodyStr = req.body?.let { val b = Buffer(); it.writeTo(b); b.readUtf8() }
+		val safeBody = (bodyStr ?: "").replace("\\","\\\\").replace("'","\\'").replace("\n","\\n")
+
+		val hdrs = buildString {
+			append("{")
+			var fi = true
+			for (i in 0 until req.headers.size) {
+				val n = req.headers.name(i).lowercase()
+				if (n in setOf("host","content-length","connection","transfer-encoding")) continue
+				if (!fi) append(","); fi = false
+				val name_ = req.headers.name(i).replace("'","\\'")
+				val value_ = req.headers.value(i).replace("'","\\'").replace("\n","\\n")
+				append("'$name_':'$value_'")
+			}
+			append("}")
+		}
+		val bodyClause = if (bodyStr != null) ",body:'$safeBody'" else ""
+
+		val js = """fetch('$safeUrl',{method:'$method',headers:$hdrs$bodyClause}).then(function(r){var h={};r.headers.forEach(function(v,k){h[k]=v});return r.text().then(function(t){window.__ss.onResult($id,r.status,t,JSON.stringify(h))})}).catch(function(e){window.__ss.onError($id,'fetch:'+e.message)})"""
+
+		executor.execute { wv.evaluateJavascript(js, null) }
+
+		if (!latch.await(30, TimeUnit.SECONDS)) throw IOException("POST timeout ${req.url}")
+		val r = results.remove(id); latches.remove(id)
+		if (r == null) throw IOException("POST: null result")
+		if (r.error != null) throw IOException("POST: ${r.error}")
+
+		val hb = okhttp3.Headers.Builder()
+		r.headers.forEach { (k, v) -> hb.add(k, v) }
+		return Response.Builder().request(req).protocol(Protocol.HTTP_1_1).code(r.code).message("OK")
+			.headers(hb.build()).body(r.body.toResponseBody("text/html".toMediaTypeOrNull())).build()
 	}
 }
