@@ -25,9 +25,9 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 	private val executor = ContextCompat.getMainExecutor(context)
 	@Volatile private var webView: WebView? = null
 	@Volatile private var bootstrapped = false
-	private val cfHosts = setOf("fictionzone.net", "www.fictionzone.net", "cdn.fictionzone.net")
+	// Only route main site through WebView; CDN images get OkHttp (often CF-lite)
+	private val cfHosts = setOf("fictionzone.net", "www.fictionzone.net")
 
-	// Per-request result objects
 	private val results = ConcurrentHashMap<Long, Result>()
 	private val latches = ConcurrentHashMap<Long, CountDownLatch>()
 	private val nextId = AtomicLong(0)
@@ -42,7 +42,7 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 	inner class Bridge {
 		@JavascriptInterface
 		fun onResult(id: Long, code: Int, body: String, hdrJson: String) {
-			val r = Result().also { it.code = code; it.body = body }
+			val r = Result().apply { this.code = code; this.body = body }
 			try {
 				val j = org.json.JSONObject(hdrJson)
 				j.keys().forEach { k -> r.headers[k] = j.getString(k) }
@@ -50,11 +50,9 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 			results[id] = r
 			latches[id]?.countDown()
 		}
-
 		@JavascriptInterface
 		fun onError(id: Long, msg: String) {
-			val r = Result().also { it.error = msg }
-			results[id] = r
+			results[id] = Result().apply { error = msg }
 			latches[id]?.countDown()
 		}
 	}
@@ -74,36 +72,101 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 					addJavascriptInterface(Bridge(), "__ss")
 				}
 				wv.webViewClient = object : WebViewClientCompat() {
-					private var pageLoads = 0
+					var loads = 0
 					override fun onPageFinished(view: WebView, url: String) {
-						pageLoads++
-						if (bootstrapped) return
-						// CF challenge usually takes 2 page loads: challenge page → actual page
-						if (url.contains("fictionzone.net") && pageLoads >= 2) {
+						loads++
+						// Bootstrap is done once we see any content loaded (CF challenge solved)
+						if (!bootstrapped && loads >= 2 && url.contains("fictionzone.net")) {
 							bootstrapped = true
 							latch.countDown()
 						}
 					}
-					override fun onReceivedErrorCompat(v: WebView, code: Int, d: String?, url: String, mf: Boolean) {
-						if (mf) pageLoads++ // CF challenge page is an "error"
+					override fun onReceivedErrorCompat(v: WebView, c: Int, d: String?, url: String, mf: Boolean) {
+						loads++
 					}
 				}
 				wv.loadUrl("https://fictionzone.net/")
 				webView = wv
 			}
-			latch.await(20, TimeUnit.SECONDS)
-			bootstrapped = true // Always mark bootstrapped to prevent deadlock
+			latch.await(30, TimeUnit.SECONDS)
+			bootstrapped = true // Don't deadlock if CF hangs
 		}
 	}
 
 	override fun intercept(chain: Interceptor.Chain): Response {
 		val req = chain.request()
-		if (req.url.host !in cfHosts) return chain.proceed(req)
+		val host = req.url.host
+
+		// Let non-fictionzone hosts through OkHttp
+		if (host !in cfHosts) return chain.proceed(req)
+
+		// For images / static assets on main domain, let OkHttp try
+		val path = req.url.encodedPath
+		if (path.contains(".jpg") || path.contains(".png") || path.contains(".webp") ||
+			path.contains(".gif") || path.contains(".svg") || path.contains(".ico") ||
+			path.contains(".css") || path.contains(".js") || path.contains(".woff") ||
+			path.contains(".ttf") || path.contains(".json")) {
+			return chain.proceed(req)
+		}
 
 		ensureBootstrapped()
 		val wv = webView ?: return chain.proceed(req)
 
+		// GET requests → load page directly in WebView for full HTML
+		if (req.method == "GET") {
+			return loadPageInWebView(wv, req)
+		}
+
+		// POST/other → use fetch() bridge
 		return fetchViaBridge(wv, req)
+	}
+
+	@SuppressLint("SetJavaScriptEnabled")
+	private fun loadPageInWebView(wv: WebView, req: Request): Response {
+		val latch = CountDownLatch(1)
+		var html: String? = null
+		var errorMsg: String? = null
+
+		executor.execute {
+			wv.webViewClient = object : WebViewClientCompat() {
+				override fun onPageFinished(view: WebView, url: String) {
+					view.evaluateJavascript(
+						"(function(){return '<html>'+document.documentElement.outerHTML+'</html>';})();"
+					) { result ->
+						if (result != null && result != "null") {
+							html = result
+								.removeSurrounding("\"")
+								.replace("\\\"", "\"")
+								.replace("\\n", "\n")
+								.replace("\\t", "\t")
+								.replace("\\/", "/")
+								.replace("\\\\", "\\")
+								.replace("\\u003C", "<")
+								.replace("\\u003E", ">")
+						}
+						latch.countDown()
+					}
+				}
+				override fun onReceivedErrorCompat(
+					v: WebView, code: Int, desc: String?, url: String, mainFrame: Boolean
+				) {
+					if (mainFrame) { errorMsg = desc; latch.countDown() }
+				}
+			}
+			// Navigate to the target URL — cookies from the first page carry over
+			wv.loadUrl(req.url.toString())
+		}
+
+		latch.await(25, TimeUnit.SECONDS)
+
+		if (errorMsg != null) throw IOException("WV page load: $errorMsg")
+		if (html.isNullOrEmpty()) throw IOException("WV page load: empty body")
+
+		return Response.Builder()
+			.request(req).protocol(Protocol.HTTP_1_1)
+			.code(200).message("OK")
+			.body(html.toResponseBody("text/html".toMediaTypeOrNull()))
+			.build()
 	}
 
 	private fun fetchViaBridge(wv: WebView, req: Request): Response {
@@ -126,7 +189,6 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 			}
 			append("}")
 		}
-
 		val bodyPart = bodyStr?.let {
 			",body:'${it.replace("\\","\\\\").replace("'","\\'").replace("\n","\\n")}'"
 		} ?: ""
@@ -139,17 +201,16 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 		val result = results.remove(id)
 		latches.remove(id)
 
-		if (result == null) throw IOException("WV fetch: timed out")
-		if (result.error != null) throw IOException("WV fetch: ${result.error}")
-		if (result.code == 0) throw IOException("WV fetch: no response")
+		if (result == null) throw IOException("WV POST: timed out")
+		if (result.error != null) throw IOException("WV POST: ${result.error}")
+		if (result.code == 0) throw IOException("WV POST: no response")
 
-		val hdrBuilder = okhttp3.Headers.Builder()
-		result.headers.forEach { (k, v) -> hdrBuilder.add(k, v) }
+		val hb = okhttp3.Headers.Builder()
+		result.headers.forEach { (k, v) -> hb.add(k, v) }
 
 		return Response.Builder()
 			.request(req).protocol(Protocol.HTTP_1_1)
-			.code(result.code).message("OK")
-			.headers(hdrBuilder.build())
+			.code(result.code).message("OK").headers(hb.build())
 			.body(result.body.toResponseBody("text/html".toMediaTypeOrNull()))
 			.build()
 	}
