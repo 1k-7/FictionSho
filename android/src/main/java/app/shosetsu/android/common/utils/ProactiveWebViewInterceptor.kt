@@ -72,7 +72,7 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 		} else ""
 
 		val safeUrl = url.replace("\\", "\\\\").replace("\"", "\\\"")
-		val hdrs = buildString {
+		val jsHdrStr = buildString {
 			append("{")
 			var fi = true
 			for (i in 0 until req.headers.size) {
@@ -86,7 +86,7 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 			append("}")
 		}
 
-		val js = """fetch("$safeUrl",{method:"$method",headers:$hdrs$jsBody}).then(function(r){var h={};r.headers.forEach(function(v,k){h[k]=v;});return r.text().then(function(b){return JSON.stringify({c:r.status,b:b,h:h});});}).catch(function(e){return JSON.stringify({e:String(e)});})"""
+		val js = """fetch("$safeUrl",{method:"$method",headers:$jsHdrStr$jsBody}).then(function(r){var h={};r.headers.forEach(function(v,k){h[k]=v;});return r.text().then(function(b){return JSON.stringify({c:r.status,b:b,h:h});});}).catch(function(e){return JSON.stringify({e:String(e)});})"""
 
 		val latch = CountDownLatch(1)
 		var code = 200
@@ -117,9 +117,13 @@ class ProactiveWebViewInterceptor(private val context: Context) : Interceptor {
 		latch.await(30, TimeUnit.SECONDS)
 		if (error != null) throw IOException("WV fetch: $error")
 
+		val headersBuilder = okhttp3.Headers.Builder()
+		rHeaders.forEach { (k, v) -> headersBuilder.add(k, v) }
+		val hdrs = headersBuilder.build()
+
 		return Response.Builder()
 			.request(req).protocol(Protocol.HTTP_1_1).code(code).message("OK")
-			.headers(okhttp3.Headers.of(rHeaders))
-			.body(body.toResponseBody(toMediaTypeOrNull("text/html"))).build()
+			.headers(hdrs)
+			.body(body.toResponseBody("text/html".toMediaTypeOrNull())).build()
 	}
 }
